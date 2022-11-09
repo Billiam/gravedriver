@@ -10,6 +10,7 @@ class Solenoid
     Solenoid(uint8_t pin);
     void update(int frequency, int power, unsigned int duration);
     int spm;
+    int pow;
   private:
     uint8_t _pin;
     bool _on;

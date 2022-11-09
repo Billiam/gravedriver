@@ -4,38 +4,35 @@
 
 #include "pinDefinitions.h"
 
-// #define MIN_DELAY 85
-// #define MAX_DELAY 1500
-#define MIN_FREQUENCY 40
-#define MAX_FREQUENCY 3000
-
+#define MIN_FREQUENCY 20
+#define MAX_FREQUENCY 2400
+#define MIN_POWER 60
 
 Solenoid::Solenoid(uint8_t pin) : _pin(pin) {}
-//temp
 
 void Solenoid::update(int frequency, int power, unsigned int duration)
-{ 
-  // _cycleTime = 
-  spm = map(frequency, 0, 1024, MIN_FREQUENCY, MAX_FREQUENCY);
-  // _cycleTime = map(frequency, 0, 1024, MIN_DELAY, MAX_DELAY);
-  _solenoidTimer.setTimeout(60000/spm);
+{
+  pow = power;
+  int mappedPower = power == 0 ? 0 : map(power, 1, 1023, MIN_POWER, 128);
+  int mappedFrequency = map(frequency, 0, 1023, MIN_FREQUENCY, MAX_FREQUENCY);
+  _solenoidTimer.setTimeout(60000/mappedFrequency);
 
   if (frequency == 0 || power == 0) {
-    if (frequency == 0) {
-      spm = 0;
-    }
     setSolenoid(LOW, power);
     _solenoidTimer.stop();
   } else if (_solenoidTimer.onRestart()) {
-    _startMicros = micros();
-    Serial.println("on");
     setSolenoid(HIGH, power);
   } else if (_solenoidTimer.isStopped()) {
     _solenoidTimer.restart();
-  } else if (_on && micros() - _startMicros > (duration * 30)) {
+  } else if (_on && _solenoidTimer.getValue() > duration) {
     // off cycle
-    Serial.println(micros() - _startMicros);
+    // Serial.println(micros() - _startMicros);
     setSolenoid(LOW, power);
+  }
+  if (frequency == 0) {
+    spm = 0;
+  } else {
+    spm = mappedFrequency;
   }
 }
 
