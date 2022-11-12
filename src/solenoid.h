@@ -11,6 +11,7 @@ class Solenoid
     void update(int frequency, int power, unsigned int duration);
     int spm;
     int pow;
+    int freq;
   private:
     uint8_t _pin;
     bool _on;

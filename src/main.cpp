@@ -2,7 +2,7 @@
 
 #include <RBD_Timer.h>
 #include <Bounce2.h>
-#include <Smoothed.h>
+#include <ResponsiveAnalogRead.h>
 
 #define I2C_PIN_SDA (4u)
 #define I2C_PIN_SCL (5u)
@@ -14,6 +14,9 @@
 
 #define MIN_POWER 64
 #define REVERSE_PEDAL true
+
+#define MIN_DURATION 10
+#define MAX_DURATION 80
 
 #include "solenoid.h"
 
@@ -27,38 +30,91 @@
 RBD::Timer logger;
 Solenoid solenoid = Solenoid(SOLENOID_PIN);
 
-unsigned int solenoidDuration = 10;
+unsigned int solenoidDuration = MIN_DURATION;
 int pedalMin;
 int pedalMax;
 bool pedalRead = false;
-Smoothed <int> pedalInput;
+
+ResponsiveAnalogRead pedalInput;
 
 Bounce2::Button durationButton = Bounce2::Button();
+
+// TODO: Configurable screen dimensions
+// TODO: Cap duration to frequency percentage or waveTime -
+void drawWave(pico_ssd1306::SSD1306 *ssd1306, uint8_t y, int frequency, int spm, int duration, int power) {
+  const int maxHeight = 14;
+  const int maxLen = 40;
+
+  int y1 = y + maxHeight;
+
+  if (frequency == 0) {
+    drawLine(ssd1306, 5, y1, 123, y1);
+    return;
+  }
+
+  int height = power == 0 ? 0 : map(power, 1, 1023, 1, maxHeight);
+  int wavelength = map(frequency, 1023, 0, 5, maxLen);
+  double waveTime = 60000.0/spm;
+  int pulseWidth = ceil(min(1, duration/waveTime) * wavelength);
+  int waves = ceil(118.0/wavelength);
+
+  int y2 = y1 - height;
+  
+  for (int i=0;i<waves;i++) {
+    int x1 = 5 + i * wavelength;
+    int x2 = x1 + wavelength - pulseWidth;
+    int x3 = x1 + wavelength;
+    drawLine(ssd1306, x1, y1, x2, y1);
+    drawLine(ssd1306, x2, y1, x2, y2);
+    drawLine(ssd1306, x2, y2, x3, y2);
+    drawLine(ssd1306, x3, y2, x3, y1);
+  }
+}
+
+void drawMeter(pico_ssd1306::SSD1306 *ssd1306, int x, int y, int width, int height, double percent) {
+  drawRect(ssd1306, x, y, x + width, y + height);
+  if (percent > 0) {
+    int barWidth = (int)(width - 4) * percent;
+    fillRect(ssd1306, x + 2, y + 2, x + 2 + barWidth, y + height - 2);
+  }
+}
+
+int lastDur = 0;
 
 void displayLoop() {
   pico_ssd1306::SSD1306 display = pico_ssd1306::SSD1306(i2c0, 0x3C, pico_ssd1306::Size::W128xH64);
   display.setOrientation(0);
 
   display.sendBuffer(); //Send buffer to device and show on screen
-
+  
   while(1) {
+    // unsigned long startTime = micros();
+    absolute_time_t startTime = get_absolute_time();
     display.clear();
 
     char l1_spm[16];
-    int solenoidVal = solenoid.spm;
+    int spm = solenoid.spm;
+    int freq = solenoid.freq;
+    
     int solenoidPower = solenoid.pow;
-    snprintf(l1_spm, sizeof l1_spm, "spm: %d", solenoidVal);
-    drawText(&display, font_8x6, l1_spm, 0, 0);
-    snprintf(l1_spm, sizeof l1_spm, "pow: %d", solenoidPower);
-    drawText(&display, font_8x6, l1_spm, 0, 10);
-    snprintf(l1_spm, sizeof l1_spm, "dur: %d", solenoidDuration);
-    drawText(&display, font_8x6, l1_spm, 0, 20);
 
-    drawRect(&display, 80,0,127,8);
-    if (solenoidVal > 0) {
-      int barWidth = (int)((125 - 82) * (solenoidVal/2400.0));
-      fillRect(&display, 82, 2, 82 + barWidth, 6);
-    }
+    drawWave(&display, 0, freq, spm, solenoidDuration, solenoidPower);
+
+    // TODO: track cursor
+    snprintf(l1_spm, sizeof l1_spm, "spm: %d", spm);
+    drawText(&display, font_8x6, l1_spm, 0, 18);
+    drawMeter(&display, 80, 18, 46, 8, spm/2400.0);
+
+    snprintf(l1_spm, sizeof l1_spm, "pow: %d", solenoidPower);
+    drawText(&display, font_8x6, l1_spm, 0, 28);
+    drawMeter(&display, 80, 28, 46, 8, solenoidPower/1024.0);
+
+    snprintf(l1_spm, sizeof l1_spm, "dur: %d", solenoidDuration);
+    drawText(&display, font_8x6, l1_spm, 0, 38);
+    drawMeter(&display, 80, 38, 46, 8, (1.0 * solenoidDuration - MIN_DURATION)/(MAX_DURATION - MIN_DURATION));
+
+    snprintf(l1_spm, sizeof l1_spm, "off: %d", 60000/spm - solenoidDuration);
+    drawText(&display, font_8x6, l1_spm, 0, 48);
     
     display.sendBuffer();
   }
@@ -84,13 +140,17 @@ void setup() {
   char test[16];
   snprintf(test, sizeof test, "SPM: %d", solenoid.spm);
 
-  pedalInput.begin(SMOOTHED_AVERAGE, 10);
+  pedalInput.enableSleep();
+  pedalInput.setSnapMultiplier(0.01);
+  pedalInput.enableEdgeSnap();
+  pedalInput.setActivityThreshold(10.0);
+
+  logger.setTimeout(100);
 }
 
 int readPedal() {
-  pedalInput.add(analogRead(PEDAL_PIN));
-  int val = pedalInput.get();
-
+  pedalInput.update(analogRead(PEDAL_PIN));
+  int val = pedalInput.getValue();
   // if (REVERSE_PEDAL) {
     // val = 1024 - val;
   // }
@@ -151,21 +211,21 @@ void loop() {
   solenoid.update(pedal, pot, solenoidDuration);
 
   if (readDuration()) {
-    solenoidDuration = solenoidDuration + (solenoidDuration < 20 ? 1 : 5);
-    if (solenoidDuration > 80) {
-      solenoidDuration = 10;
+    solenoidDuration = solenoidDuration + (solenoidDuration < MIN_DURATION + 10 ? 1 : 5);
+    if (solenoidDuration > MAX_DURATION) {
+      solenoidDuration = MIN_DURATION;
     }
   }
 
   // updateDisplay(pedal, pot, solenoidDuration, solenoid.spm);
-  if (logger.onRestart()) {
-    // Serial.println(pedal);
-  //   Serial.print("\t");
-  //   Serial.print(pot);
-  //   Serial.print("\t");
-  //   Serial.print(solenoidDuration);
-  //   Serial.print("\t");
-  //   Serial.println(solenoid.spm);
-    // Serial.println(micros() - t);
-  }
+  // if (logger.onRestart()) {
+    //   Serial.println(pedal);
+    //   Serial.print("\t");
+    //   Serial.print(pot);
+    //   Serial.print("\t");
+    //   Serial.print(solenoidDuration);
+    //   Serial.print("\t");
+    //   Serial.println(solenoid.spm);
+    //   Serial.println(micros() - t);
+  // }
 }

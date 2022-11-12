@@ -13,21 +13,24 @@ Solenoid::Solenoid(uint8_t pin) : _pin(pin) {}
 void Solenoid::update(int frequency, int power, unsigned int duration)
 {
   pow = power;
+  freq = frequency;
+
   int mappedPower = power == 0 ? 0 : map(power, 1, 1023, MIN_POWER, 128);
   int mappedFrequency = map(frequency, 0, 1023, MIN_FREQUENCY, MAX_FREQUENCY);
+  
   _solenoidTimer.setTimeout(60000/mappedFrequency);
 
-  if (frequency == 0 || power == 0) {
-    setSolenoid(LOW, power);
+  if (frequency == 0 || mappedPower == 0) {
+    setSolenoid(LOW, mappedPower);
     _solenoidTimer.stop();
   } else if (_solenoidTimer.onRestart()) {
-    setSolenoid(HIGH, power);
+    setSolenoid(HIGH, mappedPower);
   } else if (_solenoidTimer.isStopped()) {
     _solenoidTimer.restart();
   } else if (_on && _solenoidTimer.getValue() > duration) {
     // off cycle
     // Serial.println(micros() - _startMicros);
-    setSolenoid(LOW, power);
+    setSolenoid(LOW, mappedPower);
   }
   if (frequency == 0) {
     spm = 0;
