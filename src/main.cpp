@@ -184,7 +184,8 @@ void drawStatus(pico_ssd1306::SSD1306 *ssd1306)
                 (MAX_DURATION - MIN_DURATION));
   textDisplay->textfln(1, "dur: %d", state.duration);
 
-  textDisplay->textfln(1, "off: %d", 60000 / spm - state.duration);
+  textDisplay->textfln(1, "off: %d",
+                       spm > 0 ? 60000 / spm - state.duration : 0);
 };
 
 void drawMenu(pico_ssd1306::SSD1306 *ssd1306) { menu.display(); }
