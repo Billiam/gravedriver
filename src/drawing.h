@@ -3,6 +3,9 @@
 
 #include <ssd1306.h>
 
+static const uint8_t arrow[8] = {0x00, 0x10, 0x10, 0x7c,
+                                 0x38, 0x10, 0x00, 0x00};
+
 void addAdafruitBitmap(
     pico_ssd1306::SSD1306 *display, int16_t anchorX, int16_t anchorY,
     uint8_t image_width, uint8_t image_height, const uint8_t *image,

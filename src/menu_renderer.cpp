@@ -9,9 +9,6 @@
 extern pico_ssd1306::SSD1306 *display;
 extern TextDisplay *textDisplay;
 
-static const uint8_t arrow[8] = {0x00, 0x10, 0x10, 0x7c,
-                                 0x38, 0x10, 0x00, 0x00};
-
 void MenuRenderer::render(Menu const &menu) const
 {
   textDisplay->text(menu.get_name());
