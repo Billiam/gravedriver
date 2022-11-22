@@ -18,12 +18,16 @@
 #define MIN_DURATION 15
 #define MAX_DURATION 40
 
+#define HOLD_BUTTON_DURATION 400
+
 #include "fast_math.h"
 #include "font_8x6.h"
 #include "graver_menu.h"
+#include "hold_button.h"
 #include "scene.h"
 #include "solenoid.h"
 #include "state.h"
+#include "step_rotary.h"
 #include "text_display.h"
 #include <Bounce2.h>
 #include <MenuSystem.h>
@@ -36,16 +40,19 @@
 #include <shapeRenderer/ShapeRenderer.h>
 #include <ssd1306.h>
 #include <textRenderer/TextRenderer.h>
+
 RBD::Timer logger;
 Solenoid solenoid = Solenoid(SOLENOID_PIN);
 
 ResponsiveAnalogRead pedalInput;
 
-Bounce2::Button durationButton;
-Bounce2::Button rightButton;
-Bounce2::Button upButton;
-Bounce2::Button downButton;
-Bounce2::Button leftButton;
+StepRotary menuKnob(8u, 7u);
+// TODO: Make step size configurable at update time?
+// or maybe just ignore some number of steps
+StepRotary powerKnob(2u, 1u, ONE_STEP);
+
+HoldButton powerKnobButton;
+HoldButton menuKnobButton;
 
 stateType state;
 
@@ -239,15 +246,21 @@ void setup()
   pinMode(SOLENOID_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
 
+  pinMode(1u, INPUT_PULLUP);
+  pinMode(2u, INPUT_PULLUP);
+
   state.scene = SCENE_STATUS;
   state.duration = MIN_DURATION;
   state.pedalRead = false;
   state.curve = 0;
 
-  upButton.attach(UP_PIN, INPUT_PULLUP);
-  rightButton.attach(RIGHT_PIN, INPUT_PULLUP);
-  downButton.attach(DOWN_PIN, INPUT_PULLUP);
-  leftButton.attach(LEFT_PIN, INPUT_PULLUP);
+  menuKnob.begin();
+  powerKnob.begin();
+
+  powerKnobButton.attach(3u, INPUT_PULLUP);
+  powerKnobButton.setPressedState(LOW);
+  menuKnobButton.attach(6u, INPUT_PULLUP);
+  menuKnobButton.setPressedState(LOW);
 
   _i2c_init(i2c0, 1000000); // Use i2c port with baud rate of 1Mhz
   // Set pins for I2C operation
@@ -325,19 +338,15 @@ int readPot()
 
 void updateButtons()
 {
-  upButton.update();
-  rightButton.update();
-  downButton.update();
-  leftButton.update();
+  menuKnobButton.update();
+  powerKnobButton.update();
 }
 
 void statusLoop()
 {
   updateButtons();
 
-  if (upButton.fell() || downButton.fell() || leftButton.fell() ||
-      rightButton.fell()) {
-
+  if (menuKnob.process() || menuKnobButton.wasReleased()) {
     Serial.println("Changing to menu");
     state.scene = SCENE_MENU;
   }
@@ -346,21 +355,15 @@ void statusLoop()
 void menuLoop()
 {
   updateButtons();
+  char menuVal = menuKnob.process();
 
-  if (downButton.fell()) {
-    Serial.println("next");
+  if (menuVal == DIR_CW) {
     menu.next(true);
-  }
-  if (upButton.fell()) {
-    Serial.println("prev");
+  } else if (menuVal == DIR_CCW) {
     menu.prev(true);
   }
-  if (rightButton.fell()) {
-    Serial.println("Select");
-    menu.select();
-  }
-  if (leftButton.fell()) {
-    Serial.println("Back");
+
+  if (menuKnobButton.wasHeld(HOLD_BUTTON_DURATION)) {
     const Menu *current_menu = menu.get_current_menu();
     bool skipBack = false;
 
@@ -378,15 +381,19 @@ void menuLoop()
     if (!skipBack && !menu.back()) {
       state.scene = SCENE_STATUS;
     }
+  } else if (menuKnobButton.wasReleased()) {
+    Serial.println("Select");
+    menu.select();
   }
 }
 
 void curveLoop()
 {
   updateButtons();
+  char menuVal = menuKnob.process();
 
-  if (upButton.fell() || downButton.fell()) {
-    int dir = downButton.fell() ? 1 : -1;
+  if (menuVal) {
+    int dir = menuVal == DIR_CW ? 1 : -1;
     int nextCurve = state.curve + dir;
     nextCurve = (nextCurve + 19) % 13 - 6;
     if (abs(nextCurve) == 1) {
@@ -396,8 +403,8 @@ void curveLoop()
     state.curve = nextCurve;
   }
 
-  if (rightButton.fell() || leftButton.fell()) {
-    Serial.write("Back to menu");
+  if (menuKnobButton.wasReleased()) {
+    Serial.println("Back to menu");
     state.scene = SCENE_MENU;
   }
 }
