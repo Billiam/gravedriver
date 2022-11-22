@@ -15,11 +15,15 @@
 #define MIN_POWER 64
 #define REVERSE_PEDAL true
 
-#define MIN_DURATION 15
+#define MIN_DURATION 10
 #define MAX_DURATION 40
 
 #define HOLD_BUTTON_DURATION 400
 
+#define MODE_POWER 0x00
+#define MODE_DURATION 0x01
+
+#include "drawing.h"
 #include "fast_math.h"
 #include "font_8x6.h"
 #include "graver_menu.h"
@@ -170,25 +174,31 @@ void drawStatus(pico_ssd1306::SSD1306 *ssd1306)
   int spm = solenoid.spm;
   int freq = solenoid.freq;
 
-  int solenoidPower = solenoid.pow;
+  int solenoidPower = state.power;
 
   drawWave(ssd1306, 0, freq, spm, solenoid.spmPercent(), state.duration,
            solenoidPower);
 
-  // TODO: track cursor
-  // snprintf(buff, sizeof buff, "spm: %d", spm);
-  textDisplay->setCursor(0, 18);
+  textDisplay->setCursor(8, 18);
   drawMeter(ssd1306, 80, textDisplay->getCursorY(), 46, 8, freq / 1024.0);
   textDisplay->textfln(1, "spm: %d", spm);
   // drawText(ssd1306, font_8x6, buff, 0, 18);
 
   drawMeter(ssd1306, 80, textDisplay->getCursorY(), 46, 8,
             solenoidPower / 1024.0);
+  if (state.powerMode == MODE_POWER) {
+    addAdafruitBitmap(ssd1306, textDisplay->getCursorX() - 8,
+                      textDisplay->getCursorY(), 8, 8, arrow);
+  }
   textDisplay->textfln(1, "pow: %d", solenoidPower);
 
   drawMeter(ssd1306, 80, textDisplay->getCursorY(), 46, 8,
             (1.0 * state.duration - MIN_DURATION) /
                 (MAX_DURATION - MIN_DURATION));
+  if (state.powerMode == MODE_DURATION) {
+    addAdafruitBitmap(ssd1306, textDisplay->getCursorX() - 8,
+                      textDisplay->getCursorY(), 8, 8, arrow);
+  }
   textDisplay->textfln(1, "dur: %d", state.duration);
 
   textDisplay->textfln(1, "off: %d",
@@ -253,6 +263,8 @@ void setup()
   state.duration = MIN_DURATION;
   state.pedalRead = false;
   state.curve = 0;
+  state.power = 0;
+  state.powerMode = MODE_POWER;
 
   menuKnob.begin();
   powerKnob.begin();
@@ -327,13 +339,28 @@ int readPedal()
   return constrain(map(val, minThreshold, maxThreshold, 0, 1023), 0, 1023);
 }
 
-int readPot()
+int loopValue(int val, int amount, int min, int max)
 {
-  int val = analogRead(POT_PIN);
-  if (val < 50) {
-    return 0;
+  int range = max - min;
+
+  return (val - min + (amount % range) + range) % range + min;
+}
+
+void updatePower()
+{
+  char powerDir = powerKnob.process();
+  if (!powerDir) {
+    return;
   }
-  return constrain(map(val, 20, 975, 0, 1023), 0, 1023);
+
+  int dir = powerDir == DIR_CW ? 1 : -1;
+
+  if (state.powerMode == MODE_POWER) {
+    state.power = constrain(state.power + dir * 8, 0, 1023);
+  } else {
+    state.duration =
+        constrain(state.duration + dir, MIN_DURATION, MAX_DURATION);
+  }
 }
 
 void updateButtons()
@@ -349,6 +376,16 @@ void statusLoop()
   if (menuKnob.process() || menuKnobButton.wasReleased()) {
     Serial.println("Changing to menu");
     state.scene = SCENE_MENU;
+  }
+
+  if (powerKnobButton.wasReleased()) {
+    if (state.powerMode == MODE_DURATION) {
+      state.powerMode = MODE_POWER;
+      powerKnob.setStep(ONE_STEP);
+    } else {
+      state.powerMode = MODE_DURATION;
+      powerKnob.setStep(FULL_STEP);
+    }
   }
 }
 
@@ -411,9 +448,10 @@ void curveLoop()
 
 void updateSolenoid()
 {
+  updatePower();
+
   int pedal = readPedal();
-  int pot = readPot();
-  solenoid.update(pedal, pot, state.duration, state.curve);
+  solenoid.update(pedal, state.power, state.duration, state.curve);
 }
 
 // TODO: Could change a pointer to a different scene instead

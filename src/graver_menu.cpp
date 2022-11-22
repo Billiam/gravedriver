@@ -18,8 +18,6 @@ void onDurationChanged(float val);
 
 BackMenuItem mi_exit("back", &onExitSelected, &menu);
 MenuItem mi_curve("Input curve", &onCurveSelected);
-LiveNumericMenuItem mi_duration("on time", nullptr, 5.0, 5.0, 40.0, -1.0,
-                                nullptr, &onDurationChanged);
 
 void buildMenu()
 {
@@ -51,5 +49,3 @@ void onExitSelected(MenuComponent *component)
   Serial.println("STATUS SCENE");
   state.scene = SCENE_STATUS;
 }
-
-void onDurationChanged(float value) { state.duration = value; }

@@ -8,7 +8,8 @@ struct stateType {
   int pedalMin;
   int pedalMax;
   bool pedalRead;
-
+  int power;
   int curve;
+  char powerMode;
 };
 #endif

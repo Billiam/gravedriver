@@ -10,7 +10,6 @@ public:
   Solenoid(uint8_t pin);
   void update(int frequency, int power, unsigned int duration, int curve = 0);
   int spm;
-  int pow;
   int freq;
   double spmPercent();
 

@@ -6,7 +6,7 @@
 #include "pinDefinitions.h"
 
 #define MIN_FREQUENCY 20
-#define MAX_FREQUENCY 3500
+#define MAX_FREQUENCY 2600
 #define MIN_POWER 60
 
 Solenoid::Solenoid(uint8_t pin) : _pin(pin) {}
@@ -26,7 +26,6 @@ double Solenoid::spmPercent() { return (1.0 * spm) / MAX_FREQUENCY; }
 void Solenoid::update(int frequency, int power, unsigned int duration,
                       int frequencyCurve)
 {
-  pow = power;
   freq = frequency;
 
   int mappedPower = power == 0 ? 0 : map(power, 1, 1023, MIN_POWER, 128);
