@@ -28,6 +28,7 @@ public:
 
   inline unsigned char pin_1() const { return pin1; }
   inline unsigned char pin_2() const { return pin2; }
+  void setStep(unsigned char);
 
 private:
   unsigned char state;

@@ -50,17 +50,7 @@ StepRotary::StepRotary(char _pin1, char _pin2, unsigned char step_type)
   // Initialise state.
   state = R_START;
 
-  switch (step_type) {
-    case ONE_STEP:
-      _table = one_step;
-      break;
-    case HALF_STEP:
-      _table = half_step;
-      break;
-    case FULL_STEP:
-    default:
-      _table = full_step;
-  }
+  setStep(step_type);
   // Don't invert read pin state by default
   inverter = 0;
 }
@@ -89,4 +79,19 @@ unsigned char StepRotary::process()
   state = _table[state & 0xf][pinstate];
   // Return emit bits, ie the generated event.
   return state & 0x30;
+}
+
+void StepRotary::setStep(unsigned char step_type)
+{
+  switch (step_type) {
+    case ONE_STEP:
+      _table = one_step;
+      break;
+    case HALF_STEP:
+      _table = half_step;
+      break;
+    case FULL_STEP:
+    default:
+      _table = full_step;
+  }
 }
