@@ -20,14 +20,12 @@
 
 #define HOLD_BUTTON_DURATION 400
 
-#define MODE_POWER 0x00
-#define MODE_DURATION 0x01
-
 #include "drawing.h"
 #include "fast_math.h"
 #include "font_8x6.h"
 #include "graver_menu.h"
 #include "hold_button.h"
+#include "power_mode.h"
 #include "scene.h"
 #include "solenoid.h"
 #include "state.h"
@@ -240,7 +238,7 @@ void drawStatus(pico_ssd1306::SSD1306 *ssd1306)
 
   drawMeter(ssd1306, 80, textDisplay->getCursorY(), 46, 8,
             solenoidPower / 1024.0);
-  if (state.powerMode == MODE_POWER) {
+  if (state.powerMode == PowerMode::POWER) {
     addAdafruitBitmap(ssd1306, textDisplay->getCursorX() - 8,
                       textDisplay->getCursorY(), 8, 8, arrow);
   }
@@ -249,7 +247,7 @@ void drawStatus(pico_ssd1306::SSD1306 *ssd1306)
   drawMeter(ssd1306, 80, textDisplay->getCursorY(), 46, 8,
             (1.0 * state.duration - MIN_DURATION) /
                 (MAX_DURATION - MIN_DURATION));
-  if (state.powerMode == MODE_DURATION) {
+  if (state.powerMode == PowerMode::DURATION) {
     addAdafruitBitmap(ssd1306, textDisplay->getCursorX() - 8,
                       textDisplay->getCursorY(), 8, 8, arrow);
   }
@@ -298,16 +296,16 @@ void displayLoop()
     displayInst.clear();
 
     switch (state.scene) {
-      case SCENE_STATUS:
+      case Scene::STATUS:
         drawStatus(display);
         break;
-      case SCENE_MENU:
+      case Scene::MENU:
         drawMenu(display);
         break;
-      case SCENE_CURVE:
+      case Scene::CURVE:
         drawCurve(display);
         break;
-      case SCENE_CALIBRATE:
+      case Scene::CALIBRATE:
         drawCalibrate(display);
         break;
     }
@@ -329,12 +327,12 @@ void setup()
   pinMode(1u, INPUT_PULLUP);
   pinMode(2u, INPUT_PULLUP);
 
-  state.scene = SCENE_STATUS;
+  state.scene = Scene::STATUS;
   state.duration = MIN_DURATION;
   state.pedalRead = false;
   state.curve = 0;
   state.power = 0;
-  state.powerMode = MODE_POWER;
+  state.powerMode = PowerMode::POWER;
   state.pedalMin = 0;
   state.pedalMax = 1024;
 
@@ -375,35 +373,6 @@ int readPedal()
   // val = 1024 - val;
   // }
 
-  // if (!state.pedalRead) {
-  //   state.pedalRead = true;
-  //   state.pedalMin = val;
-  //   state.pedalMax = val;
-  // }
-
-  // if (val > state.pedalMax) {
-  //   state.pedalMax = val;
-  // }
-  // if (val < state.pedalMin) {
-  //   state.pedalMin = val;
-  // }
-
-  // int range = state.pedalMax - state.pedalMin;
-  // if (range < 20) {
-  //   return 0;
-  // }
-  // int minThreshold = state.pedalMin + range * 0.15;
-  // int maxThreshold = state.pedalMin + range * 0.9;
-  // Serial.print(pedalMin);
-  // Serial.print("\t");
-  // Serial.print(minThreshold);
-  // Serial.print("\t");
-  // Serial.print(maxThreshold);
-  // Serial.print("\t");
-  // Serial.print(pedalMax);
-  // Serial.print("\t");
-  // Serial.println(val);
-
   if (val < state.pedalMin) {
     return 0;
   } else if (val > state.pedalMax) {
@@ -428,7 +397,7 @@ void updatePower()
 
   int dir = powerDir == DIR_CW ? 1 : -1;
 
-  if (state.powerMode == MODE_POWER) {
+  if (state.powerMode == PowerMode::POWER) {
     state.power = constrain(state.power + dir * 8, 0, 1023);
   } else {
     state.duration =
@@ -447,15 +416,15 @@ void statusLoop()
   updateButtons();
 
   if (menuKnob.process() || menuKnobButton.wasReleased()) {
-    state.scene = SCENE_MENU;
+    state.scene = Scene::MENU;
   }
 
   if (powerKnobButton.wasReleased()) {
-    if (state.powerMode == MODE_DURATION) {
-      state.powerMode = MODE_POWER;
+    if (state.powerMode == PowerMode::DURATION) {
+      state.powerMode = PowerMode::POWER;
       powerKnob.setStep(ONE_STEP);
     } else {
-      state.powerMode = MODE_DURATION;
+      state.powerMode = PowerMode::DURATION;
       powerKnob.setStep(FULL_STEP);
     }
   }
@@ -488,7 +457,7 @@ void menuLoop()
     }
 
     if (!skipBack && !menu.back()) {
-      state.scene = SCENE_STATUS;
+      state.scene = Scene::STATUS;
     }
   } else if (menuKnobButton.wasReleased()) {
     menu.select();
@@ -511,7 +480,7 @@ void curveLoop()
   }
 
   if (menuKnobButton.wasReleased()) {
-    state.scene = SCENE_MENU;
+    state.scene = Scene::MENU;
   }
 }
 
@@ -542,7 +511,7 @@ void calibrateLoop()
   if (menuKnobButton.wasReleased()) {
     calibrationActive = false;
     solenoid.enable();
-    state.scene = SCENE_MENU;
+    state.scene = Scene::MENU;
   }
 }
 
@@ -560,16 +529,16 @@ void loop()
   updateSolenoid();
 
   switch (state.scene) {
-    case SCENE_STATUS:
+    case Scene::STATUS:
       statusLoop();
       break;
-    case SCENE_MENU:
+    case Scene::MENU:
       menuLoop();
       break;
-    case SCENE_CURVE:
+    case Scene::CURVE:
       curveLoop();
       break;
-    case SCENE_CALIBRATE:
+    case Scene::CALIBRATE:
       calibrateLoop();
       break;
   }

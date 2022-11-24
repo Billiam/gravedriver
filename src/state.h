@@ -1,8 +1,12 @@
 #ifndef statetype_h_
 #define statetype_h_
 
+#include "power_mode.h"
+#include "scene.h"
+
 struct stateType {
-  int scene;
+  Scene scene;
+  PowerMode powerMode;
 
   unsigned int duration;
   int pedalMin;
@@ -10,6 +14,5 @@ struct stateType {
   bool pedalRead;
   int power;
   int curve;
-  char powerMode;
 };
 #endif

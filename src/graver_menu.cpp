@@ -28,9 +28,9 @@ void buildMenu()
   menu.get_root_menu().add_item(&mi_calibrate);
 }
 
-void onCurveSelected(MenuComponent *component) { state.scene = SCENE_CURVE; }
-void onExitSelected(MenuComponent *component) { state.scene = SCENE_STATUS; }
+void onCurveSelected(MenuComponent *component) { state.scene = Scene::CURVE; }
+void onExitSelected(MenuComponent *component) { state.scene = Scene::STATUS; }
 void onCalibrateSelected(MenuComponent *component)
 {
-  state.scene = SCENE_CALIBRATE;
+  state.scene = Scene::CALIBRATE;
 }
