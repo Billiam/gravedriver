@@ -74,5 +74,11 @@ void TextDisplay::setCursor(int x, int y)
   cursorX = x;
   cursorY = y;
 }
+void TextDisplay::moveCursor(int x, int y)
+{
+  cursorX += x;
+  cursorY += y;
+}
+
 int TextDisplay::getCursorX() { return cursorX; }
 int TextDisplay::getCursorY() { return cursorY; }

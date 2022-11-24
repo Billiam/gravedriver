@@ -3,4 +3,5 @@
 const int SCENE_STATUS = 0;
 const int SCENE_CURVE = 1;
 const int SCENE_MENU = 2;
+const int SCENE_CALIBRATE = 4;
 #endif

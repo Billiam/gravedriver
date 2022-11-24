@@ -9,7 +9,7 @@
 #define MAX_FREQUENCY 2600
 #define MIN_POWER 60
 
-Solenoid::Solenoid(uint8_t pin) : _pin(pin) {}
+Solenoid::Solenoid(uint8_t pin) : _pin(pin), _enabled(true) {}
 
 int curveInput(int val, int curve)
 {
@@ -63,7 +63,7 @@ static int write_resolution = 8;
 
 void Solenoid::setSolenoid(uint8_t val, uint8_t power)
 {
-  _on = val == HIGH;
+  _on = val == HIGH && _enabled;
   hfWrite(_pin, _on ? power : 0, 200);
 }
 
@@ -88,3 +88,6 @@ void Solenoid::hfWrite(pin_size_t pin, int val, int us)
     pwm->write(percent);
   }
 }
+
+void Solenoid::disable() { _enabled = false; }
+void Solenoid::enable() { _enabled = true; }

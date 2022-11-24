@@ -12,10 +12,13 @@ public:
   int spm;
   int freq;
   double spmPercent();
+  void disable();
+  void enable();
 
 private:
   uint8_t _pin;
   bool _on;
+  bool _enabled;
   unsigned long _startMicros;
   RBD::Timer _solenoidTimer;
   void setSolenoid(uint8_t val, uint8_t power);

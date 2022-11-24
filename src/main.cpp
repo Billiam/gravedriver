@@ -76,6 +76,37 @@ Menu items need global actions
 pico_ssd1306::SSD1306 *display;
 TextDisplay *textDisplay;
 
+void plotDeadzone(pico_ssd1306::SSD1306 *ssd1306, int frequency, int x, int y,
+                  int width, int height)
+{
+  int y1 = y + 2;
+  int x1 = x + 2;
+
+  int x2 = x + width;
+  int y2 = y + height;
+
+  drawLine(ssd1306, x, y2, x + 5, y2);
+  drawLine(ssd1306, x, y2, x, y2 - 5);
+  drawLine(ssd1306, x2, y, x2 - 5, y);
+  drawLine(ssd1306, x2, y, x2, y + 5);
+
+  x2 -= 2;
+  y2 -= 2;
+
+  int minX = x1 + map(state.pedalMin, 0, 1024, 2, width - 4);
+  int maxX = x1 + map(state.pedalMax, 0, 1024, 2, width - 4);
+
+  // drawLine(ssd1306, x1, y2, minX, y2);
+  for (int i = x1; i < minX; i += 2) {
+    display->setPixel(i, y2);
+  }
+  drawLine(ssd1306, minX, y2, maxX, y1);
+
+  // drawLine(ssd1306, maxX, y1, x2, y1);
+  for (int i = x2; i >= maxX; i -= 2) {
+    display->setPixel(i, y1);
+  }
+}
 // TODO: Configurable screen dimensions
 // TODO: Cap duration to frequency percentage or waveTime -
 void plotCurve(pico_ssd1306::SSD1306 *ssd1306, int frequency, int x, int y,
@@ -145,15 +176,21 @@ void drawWave(pico_ssd1306::SSD1306 *ssd1306, uint8_t y, int frequency, int spm,
   int waves = ceil(118.0 / wavelength);
 
   int y2 = y1 - height;
+  int maxX = 123;
 
   for (int i = 0; i < waves; i++) {
     int x1 = 5 + i * wavelength;
     int x2 = x1 + wavelength - pulseWidth;
     int x3 = x1 + wavelength;
-    drawLine(ssd1306, x1, y1, x2, y1);
-    drawLine(ssd1306, x2, y1, x2, y2);
-    drawLine(ssd1306, x2, y2, x3, y2);
-    drawLine(ssd1306, x3, y2, x3, y1);
+
+    drawLine(ssd1306, x1, y1, min(x2, maxX), y1);
+    if (x2 < maxX) {
+      drawLine(ssd1306, x2, y1, x2, y2);
+      drawLine(ssd1306, x2, y2, min(x3, maxX), y2);
+      if (x3 < maxX) {
+        drawLine(ssd1306, x3, y2, x3, y1);
+      }
+    }
   }
 }
 
@@ -165,6 +202,23 @@ void drawMeter(pico_ssd1306::SSD1306 *ssd1306, int x, int y, int width,
     int barWidth = (int)(width - 4) * percent;
     fillRect(ssd1306, x + 2, y + 2, x + 2 + barWidth, y + height - 2);
   }
+}
+
+void drawCalibrate(pico_ssd1306::SSD1306 *ssd1306)
+{
+  textDisplay->text("calibration");
+  textDisplay->setCursor(60, 18);
+
+  plotDeadzone(ssd1306, solenoid.freq, 5, 18, 45, 45);
+  textDisplay->textln("move pedal");
+  textDisplay->textln("to min/max");
+
+  textDisplay->moveCursor(0, 8);
+  textDisplay->text("done");
+
+  fillRect(ssd1306, 59, textDisplay->getCursorY() - 1,
+           textDisplay->getCursorX() + 1, textDisplay->getCursorY() + 8,
+           pico_ssd1306::WriteMode::INVERT);
 }
 
 absolute_time_t lastLoopStart;
@@ -208,7 +262,20 @@ void drawStatus(pico_ssd1306::SSD1306 *ssd1306)
 void drawMenu(pico_ssd1306::SSD1306 *ssd1306) { menu.display(); }
 void drawCurve(pico_ssd1306::SSD1306 *ssd1306)
 {
-  plotCurve(ssd1306, solenoid.freq, 5, 5, 55, 55);
+  textDisplay->text("input curve");
+
+  // TODO: display options or current selection
+  textDisplay->setCursor(60, 18);
+
+  textDisplay->textfln(1, "spm: %d", solenoid.spm);
+  textDisplay->moveCursor(0, 8);
+
+  textDisplay->text("done");
+  fillRect(ssd1306, 59, textDisplay->getCursorY() - 1,
+           textDisplay->getCursorX() + 1, textDisplay->getCursorY() + 8,
+           pico_ssd1306::WriteMode::INVERT);
+
+  plotCurve(ssd1306, solenoid.freq, 5, 18, 45, 45);
 }
 
 void displayLoop()
@@ -240,6 +307,9 @@ void displayLoop()
       case SCENE_CURVE:
         drawCurve(display);
         break;
+      case SCENE_CALIBRATE:
+        drawCalibrate(display);
+        break;
     }
 
     // display FPS
@@ -265,6 +335,8 @@ void setup()
   state.curve = 0;
   state.power = 0;
   state.powerMode = MODE_POWER;
+  state.pedalMin = 0;
+  state.pedalMax = 1024;
 
   menuKnob.begin();
   powerKnob.begin();
@@ -298,29 +370,30 @@ int readPedal()
 {
   pedalInput.update(analogRead(PEDAL_PIN));
   int val = pedalInput.getValue();
+
   // if (REVERSE_PEDAL) {
   // val = 1024 - val;
   // }
 
-  if (!state.pedalRead) {
-    state.pedalRead = true;
-    state.pedalMin = val;
-    state.pedalMax = val;
-  }
+  // if (!state.pedalRead) {
+  //   state.pedalRead = true;
+  //   state.pedalMin = val;
+  //   state.pedalMax = val;
+  // }
 
-  if (val > state.pedalMax) {
-    state.pedalMax = val;
-  }
-  if (val < state.pedalMin) {
-    state.pedalMin = val;
-  }
+  // if (val > state.pedalMax) {
+  //   state.pedalMax = val;
+  // }
+  // if (val < state.pedalMin) {
+  //   state.pedalMin = val;
+  // }
 
-  int range = state.pedalMax - state.pedalMin;
-  if (range < 20) {
-    return 0;
-  }
-  int minThreshold = state.pedalMin + range * 0.15;
-  int maxThreshold = state.pedalMin + range * 0.9;
+  // int range = state.pedalMax - state.pedalMin;
+  // if (range < 20) {
+  //   return 0;
+  // }
+  // int minThreshold = state.pedalMin + range * 0.15;
+  // int maxThreshold = state.pedalMin + range * 0.9;
   // Serial.print(pedalMin);
   // Serial.print("\t");
   // Serial.print(minThreshold);
@@ -331,12 +404,12 @@ int readPedal()
   // Serial.print("\t");
   // Serial.println(val);
 
-  if (val < minThreshold) {
+  if (val < state.pedalMin) {
     return 0;
-  } else if (val > maxThreshold) {
+  } else if (val > state.pedalMax) {
     return 1023;
   }
-  return constrain(map(val, minThreshold, maxThreshold, 0, 1023), 0, 1023);
+  return constrain(map(val, state.pedalMin, state.pedalMax, 0, 1023), 0, 1023);
 }
 
 int loopValue(int val, int amount, int min, int max)
@@ -374,7 +447,6 @@ void statusLoop()
   updateButtons();
 
   if (menuKnob.process() || menuKnobButton.wasReleased()) {
-    Serial.println("Changing to menu");
     state.scene = SCENE_MENU;
   }
 
@@ -419,7 +491,6 @@ void menuLoop()
       state.scene = SCENE_STATUS;
     }
   } else if (menuKnobButton.wasReleased()) {
-    Serial.println("Select");
     menu.select();
   }
 }
@@ -436,12 +507,41 @@ void curveLoop()
     if (abs(nextCurve) == 1) {
       nextCurve += dir;
     }
-    Serial.println(nextCurve);
     state.curve = nextCurve;
   }
 
   if (menuKnobButton.wasReleased()) {
-    Serial.println("Back to menu");
+    state.scene = SCENE_MENU;
+  }
+}
+
+void calibrateLoop()
+{
+  static bool calibrationActive = false;
+
+  pedalInput.update(analogRead(PEDAL_PIN));
+  updateButtons();
+
+  int val = pedalInput.getValue();
+
+  // TODO: Add start/cancel calibration buttons/submenu
+  if (!calibrationActive) {
+    solenoid.disable();
+    calibrationActive = true;
+    state.pedalMin = val;
+    state.pedalMax = val;
+  }
+
+  if (val > state.pedalMax) {
+    state.pedalMax = val;
+  }
+  if (val < state.pedalMin) {
+    state.pedalMin = val;
+  }
+
+  if (menuKnobButton.wasReleased()) {
+    calibrationActive = false;
+    solenoid.enable();
     state.scene = SCENE_MENU;
   }
 }
@@ -461,15 +561,16 @@ void loop()
 
   switch (state.scene) {
     case SCENE_STATUS:
-      // code block
       statusLoop();
       break;
     case SCENE_MENU:
       menuLoop();
-      // code block
       break;
     case SCENE_CURVE:
       curveLoop();
+      break;
+    case SCENE_CALIBRATE:
+      calibrateLoop();
       break;
   }
 

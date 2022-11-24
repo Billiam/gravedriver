@@ -13,11 +13,11 @@ MenuSystem menu = MenuSystem(renderer);
 
 void onCurveSelected(MenuComponent *p_menu_component);
 void onExitSelected(MenuComponent *p_menu_component);
-void onDurationSelected(MenuComponent *p_menu_component);
-void onDurationChanged(float val);
+void onCalibrateSelected(MenuComponent *p_menu_component);
 
 BackMenuItem mi_exit("back", &onExitSelected, &menu);
-MenuItem mi_curve("Input curve", &onCurveSelected);
+MenuItem mi_curve("input curve", &onCurveSelected);
+MenuItem mi_calibrate("calibrate", &onCalibrateSelected);
 
 void buildMenu()
 {
@@ -25,27 +25,12 @@ void buildMenu()
 
   menu.get_root_menu().add_item(&mi_exit);
   menu.get_root_menu().add_item(&mi_curve);
-
-  menu.get_root_menu().add_item(&mi_duration);
-
-  //   // initialize values
-  mi_duration.set_value(state.duration);
-  // TODO: values will come from fram, previous settings
-#ifdef MIN_DURATION
-  mi_duration.set_min_value(MIN_DURATION);
-#endif
-#ifdef MAX_DURATION
-  mi_duration.set_max_value(MAX_DURATION);
-#endif
+  menu.get_root_menu().add_item(&mi_calibrate);
 }
 
-void onCurveSelected(MenuComponent *component)
+void onCurveSelected(MenuComponent *component) { state.scene = SCENE_CURVE; }
+void onExitSelected(MenuComponent *component) { state.scene = SCENE_STATUS; }
+void onCalibrateSelected(MenuComponent *component)
 {
-  Serial.println("CURVE SCENE");
-  state.scene = SCENE_CURVE;
-}
-void onExitSelected(MenuComponent *component)
-{
-  Serial.println("STATUS SCENE");
-  state.scene = SCENE_STATUS;
+  state.scene = SCENE_CALIBRATE;
 }

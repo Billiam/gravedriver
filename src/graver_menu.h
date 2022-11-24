@@ -11,8 +11,6 @@ void buildMenu();
 
 Default: Status
 Menu:
-    Power Duration, numeric (temporary, will be moved to power dial)
-
     Input mode -> name (but could be submenu)
     Change Input Curve -> scene
     Calibrate -> scene

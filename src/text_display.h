@@ -16,6 +16,7 @@ public:
   void textfln(int fontSize, const char *format, ...);
   int nextline(int fontSize = 1);
   void setCursor(int x, int y);
+  void moveCursor(int x, int y);
   int getCursorX();
   int getCursorY();
 
