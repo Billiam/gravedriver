@@ -16,11 +16,12 @@
 #define REVERSE_PEDAL true
 
 // TODO: Move to state and fram
-#define MIN_DURATION 10
+#define MIN_DURATION 2
 #define MAX_DURATION 40
 
 #define HOLD_BUTTON_DURATION 400
 
+#include "fast_math.h"
 #include "graver_menu.h"
 #include "hold_button.h"
 #include "power_mode.h"
@@ -75,6 +76,8 @@ void setup()
   pinMode(1u, INPUT_PULLUP);
   pinMode(2u, INPUT_PULLUP);
 
+  pinMode(LED_BUILTIN, OUTPUT);
+
   state.scene = Scene::STATUS;
   state.duration = MIN_DURATION;
   state.pedalRead = false;
@@ -82,7 +85,7 @@ void setup()
   state.power = 0;
   state.powerMode = PowerMode::POWER;
   state.pedalMin = 0;
-  state.pedalMax = 1024;
+  state.pedalMax = 1023;
 
   menuKnob.begin();
   powerKnob.begin();
@@ -92,7 +95,7 @@ void setup()
   menuKnobButton.attach(6u, INPUT_PULLUP);
   menuKnobButton.setPressedState(LOW);
 
-  _i2c_init(i2c0, 1000000); // Use i2c port with baud rate of 1Mhz
+  _i2c_init(i2c0, 700000); // Use i2c port with baud rate of 1Mhz
   // Set pins for I2C operation
   gpio_set_function(I2C_PIN_SDA, GPIO_FUNC_I2C);
   gpio_set_function(I2C_PIN_SCL, GPIO_FUNC_I2C);
@@ -112,7 +115,7 @@ void setup()
   // logger.setTimeout(100);
 }
 
-int readPedal()
+void updatePedal()
 {
   pedalInput.update(analogRead(PEDAL_PIN));
   int val = pedalInput.getValue();
@@ -120,13 +123,13 @@ int readPedal()
   // if (REVERSE_PEDAL) {
   // val = 1024 - val;
   // }
-
-  if (val < state.pedalMin) {
-    return 0;
-  } else if (val > state.pedalMax) {
-    return 1023;
+  int output = constrain(
+      val < 1 ? 0 : map(val, state.pedalMin, state.pedalMax, 1, 1023), 0, 1023);
+  if (state.pedalMode == PedalMode::FREQUENCY) {
+    state.frequency = output;
+  } else {
+    state.power = output;
   }
-  return constrain(map(val, state.pedalMin, state.pedalMax, 0, 1023), 0, 1023);
 }
 
 int loopValue(int val, int amount, int min, int max)
@@ -134,6 +137,17 @@ int loopValue(int val, int amount, int min, int max)
   int range = max - min + 1;
 
   return (val - min + (amount % range) + range) % range + min;
+}
+
+unsigned int unsignedConstrain(unsigned int val, unsigned int max = 1023)
+{
+  if (val > 65000) {
+    return 0;
+  }
+  if (val > max) {
+    return max;
+  }
+  return val;
 }
 
 void updatePower()
@@ -146,7 +160,11 @@ void updatePower()
   int dir = powerDir == DIR_CW ? 1 : -1;
 
   if (state.powerMode == PowerMode::POWER) {
-    state.power = constrain(state.power + dir * 8, 0, 1023);
+    if (state.pedalMode == PedalMode::FREQUENCY) {
+      state.power = unsignedConstrain(state.power + 8 * dir);
+    } else {
+      state.frequency = unsignedConstrain(state.frequency + 8 * dir);
+    }
   } else {
     state.duration =
         constrain(state.duration + dir, MIN_DURATION, MAX_DURATION);
@@ -166,8 +184,17 @@ void statusLoop()
   if (menuKnob.process() || menuKnobButton.wasReleased()) {
     state.scene = Scene::MENU;
   }
-
-  if (powerKnobButton.wasReleased()) {
+  if (powerKnobButton.wasHeld(HOLD_BUTTON_DURATION)) {
+    // todo: share state toggle methods
+    if (state.pedalMode == PedalMode::FREQUENCY) {
+      state.pedalMode = PedalMode::POWER;
+    } else {
+      state.pedalMode = PedalMode::FREQUENCY;
+    }
+    if (state.powerMode == PowerMode::DURATION) {
+      state.powerMode = PowerMode::POWER;
+    }
+  } else if (powerKnobButton.wasReleased()) {
     if (state.powerMode == PowerMode::DURATION) {
       state.powerMode = PowerMode::POWER;
       powerKnob.setStep(ONE_STEP);
@@ -262,12 +289,30 @@ void calibrateLoop()
   }
 }
 
+int curveInput(int val, int curve)
+{
+  if (curve == 0) {
+    return val;
+  }
+
+  double exp = curve > 0 ? curve : -1.0 / curve;
+  return fastPrecisePow(val / 1024.0, exp) * 1024;
+}
+
 void updateSolenoid()
 {
   updatePower();
+  updatePedal();
 
-  int pedal = readPedal();
-  solenoid.update(pedal, state.power, state.duration, state.curve);
+  int frequency = state.frequency;
+  int power = state.power;
+  if (state.pedalMode == PedalMode::FREQUENCY) {
+    frequency = curveInput(frequency, state.curve);
+  } else {
+    power = curveInput(power, state.curve);
+  }
+
+  solenoid.update(frequency, power, state.duration);
 }
 
 // TODO: Could change a pointer to a different scene instead

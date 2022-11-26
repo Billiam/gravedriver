@@ -11,26 +11,14 @@
 
 Solenoid::Solenoid(uint8_t pin) : _pin(pin), _enabled(true) {}
 
-int curveInput(int val, int curve)
-{
-  if (curve == 0) {
-    return val;
-  }
-
-  double exp = curve > 0 ? curve : -1.0 / curve;
-  return fastPrecisePow(val / 1024.0, exp) * 1024;
-}
-
 double Solenoid::spmPercent() { return (1.0 * spm) / MAX_FREQUENCY; }
 
-void Solenoid::update(int frequency, int power, unsigned int duration,
-                      int frequencyCurve)
+void Solenoid::update(int frequency, int power, unsigned int duration)
 {
-  freq = frequency;
-
   int mappedPower = power == 0 ? 0 : map(power, 1, 1023, MIN_POWER, 128);
-  int curveFreq = curveInput(freq, frequencyCurve);
-  int mappedFrequency = map(curveFreq, 0, 1023, MIN_FREQUENCY, MAX_FREQUENCY);
+  // need to handle curve input for power
+  // int curveFreq = curveInput(frequency, frequencyCurve);
+  int mappedFrequency = map(frequency, 0, 1023, MIN_FREQUENCY, MAX_FREQUENCY);
 
   // Serial.print(mappedPower);
   // Serial.print("\t");
@@ -52,10 +40,17 @@ void Solenoid::update(int frequency, int power, unsigned int duration,
     // Serial.println(micros() - _startMicros);
     setSolenoid(LOW, mappedPower);
   }
+
   if (frequency == 0) {
     spm = 0;
   } else {
     spm = mappedFrequency;
+  }
+  
+  if (power == 0) {
+    pow = 0;
+  } else {
+    pow = mappedPower;
   }
 }
 

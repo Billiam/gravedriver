@@ -8,9 +8,10 @@ class Solenoid
 {
 public:
   Solenoid(uint8_t pin);
-  void update(int frequency, int power, unsigned int duration, int curve = 0);
+  void update(int frequency, int power, unsigned int duration);
   int spm;
-  int freq;
+  int pow;
+
   double spmPercent();
   void disable();
   void enable();

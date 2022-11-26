@@ -38,8 +38,8 @@ void plotDeadzone(pico_ssd1306::SSD1306 *ssd1306, int frequency, int x, int y,
   x2 -= 2;
   y2 -= 2;
 
-  int minX = x1 + map(state.pedalMin, 0, 1024, 2, width - 4);
-  int maxX = x1 + map(state.pedalMax, 0, 1024, 2, width - 4);
+  int minX = x1 + map(state.pedalMin, 0, 1023, 2, width - 4);
+  int maxX = x1 + map(state.pedalMax, 0, 1023, 2, width - 4);
 
   // drawLine(ssd1306, x1, y2, minX, y2);
   for (int i = x1; i < minX; i += 2) {
@@ -155,7 +155,9 @@ void drawCalibrate(pico_ssd1306::SSD1306 *ssd1306)
   textDisplay->text("calibration");
   textDisplay->setCursor(60, 18);
 
-  plotDeadzone(ssd1306, solenoid.freq, 5, 18, 45, 45);
+  int pedalState =
+      state.pedalMode == PedalMode::FREQUENCY ? state.frequency : state.power;
+  plotDeadzone(ssd1306, pedalState, 5, 18, 45, 45);
   textDisplay->textln("move pedal");
   textDisplay->textln("to min/max");
 
@@ -172,7 +174,7 @@ absolute_time_t lastLoopStart;
 void drawStatus(pico_ssd1306::SSD1306 *ssd1306)
 {
   int spm = solenoid.spm;
-  int freq = solenoid.freq;
+  int freq = state.frequency;
 
   int solenoidPower = state.power;
 
@@ -181,12 +183,18 @@ void drawStatus(pico_ssd1306::SSD1306 *ssd1306)
 
   textDisplay->setCursor(8, 18);
   drawMeter(ssd1306, 80, textDisplay->getCursorY(), 46, 8, freq / 1024.0);
+  if (state.pedalMode == PedalMode::POWER &&
+      state.powerMode == PowerMode::POWER) {
+    addAdafruitBitmap(ssd1306, textDisplay->getCursorX() - 8,
+                      textDisplay->getCursorY(), 8, 8, arrow);
+  }
   textDisplay->textfln(1, "spm: %d", spm);
   // drawText(ssd1306, font_8x6, buff, 0, 18);
 
   drawMeter(ssd1306, 80, textDisplay->getCursorY(), 46, 8,
             solenoidPower / 1024.0);
-  if (state.powerMode == PowerMode::POWER) {
+  if (state.pedalMode == PedalMode::FREQUENCY &&
+      state.powerMode == PowerMode::POWER) {
     addAdafruitBitmap(ssd1306, textDisplay->getCursorX() - 8,
                       textDisplay->getCursorY(), 8, 8, arrow);
   }
@@ -213,7 +221,15 @@ void drawCurve(pico_ssd1306::SSD1306 *ssd1306)
   // TODO: display options or current selection
   textDisplay->setCursor(60, 18);
 
-  textDisplay->textfln(1, "spm: %d", solenoid.spm);
+  int currentPoint;
+  if (state.pedalMode == PedalMode::FREQUENCY) {
+    textDisplay->textfln(1, "spm: %d", solenoid.spm);
+    currentPoint = state.frequency;
+  } else {
+    textDisplay->textfln(1, "power: %d", solenoid.pow);
+    currentPoint = state.power;
+  }
+
   textDisplay->moveCursor(0, 8);
 
   textDisplay->text("done");
@@ -221,7 +237,7 @@ void drawCurve(pico_ssd1306::SSD1306 *ssd1306)
            textDisplay->getCursorX() + 1, textDisplay->getCursorY() + 8,
            pico_ssd1306::WriteMode::INVERT);
 
-  plotCurve(ssd1306, solenoid.freq, 5, 18, 45, 45);
+  plotCurve(ssd1306, currentPoint, 5, 18, 45, 45);
 }
 
 void displayLoop()
@@ -237,7 +253,6 @@ void displayLoop()
 
   while (1) {
     absolute_time_t now = get_absolute_time();
-    int dur = absolute_time_diff_us(lastLoopStart, now);
     lastLoopStart = now;
 
     textDisplay->setCursor(0, 0);
@@ -260,7 +275,8 @@ void displayLoop()
 
     // display FPS
     textDisplay->setCursor(105, 56);
-    textDisplay->textf(1, "%d", 1000000 / dur);
+    // textDisplay->textf(1, "%d", 1000000 / dur);
+    textDisplay->textf(1, "%d", to_ms_since_boot(get_absolute_time()) / 1000);
 
     display->sendBuffer();
   }

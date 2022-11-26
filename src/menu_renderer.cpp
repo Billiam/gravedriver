@@ -2,6 +2,7 @@
 #include "drawing.h"
 #include "font_8x6.h"
 #include "text_display.h"
+#include "text_menu_item.h"
 #include <shapeRenderer/ShapeRenderer.h>
 #include <ssd1306.h>
 #include <textRenderer/TextRenderer.h>
@@ -25,7 +26,7 @@ void MenuRenderer::render(Menu const &menu) const
     }
     cp_m_comp->render(*this);
     if (cp_m_comp->is_current() && !cp_m_comp->has_focus()) {
-      fillRect(display, 0, sy - 1, 127, textDisplay->getCursorY() - 1,
+      fillRect(display, 0, sy - 1, 127, textDisplay->getCursorY() - 2,
                pico_ssd1306::WriteMode::INVERT);
     }
   }
@@ -59,6 +60,19 @@ void MenuRenderer::render_numeric_menu_item(
   textDisplay->setCursor(sx, ny);
 }
 
+void MenuRenderer::render_text_menu_item(TextMenuItem const &menu_item) const
+{
+  const char *val = menu_item.get_value();
+  size_t len = strlen(val);
+  int sx = textDisplay->getCursorX();
+  int sy = textDisplay->getCursorY();
+  int ny = textDisplay->nextline();
+
+  textDisplay->text(menu_item.get_name());
+  textDisplay->setCursor(127 - len * textDisplay->fontWidth(), sy);
+  textDisplay->text(val);
+  textDisplay->setCursor(sx, ny);
+}
 void MenuRenderer::render_menu(Menu const &menu) const
 {
   textDisplay->textln(1, menu.get_name());

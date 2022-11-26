@@ -62,11 +62,15 @@ void TextDisplay::textfln(int fontSize, const char *format, ...)
   cursorX = px;
 }
 
-int TextDisplay::nextline(int fontSize)
+int TextDisplay::nextline(int fontSize) const
 {
-  const unsigned char *font = fonts[fontSize - 1];
-  uint8_t fontHeight = font[1];
-  return fontHeight + cursorY;
+  uint8_t fontHeight = fonts[fontSize - 1][1];
+  return fontHeight + cursorY + 2;
+}
+
+uint8_t TextDisplay::fontWidth(int fontSize) const
+{
+  return fonts[fontSize - 1][0];
 }
 
 void TextDisplay::setCursor(int x, int y)
@@ -80,5 +84,5 @@ void TextDisplay::moveCursor(int x, int y)
   cursorY += y;
 }
 
-int TextDisplay::getCursorX() { return cursorX; }
-int TextDisplay::getCursorY() { return cursorY; }
+int TextDisplay::getCursorX() const { return cursorX; }
+int TextDisplay::getCursorY() const { return cursorY; }
