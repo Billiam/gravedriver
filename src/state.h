@@ -9,12 +9,13 @@ struct stateType {
   Scene scene;
   PowerMode powerMode;
   PedalMode pedalMode;
+  uint8_t graver;
+  uint8_t graverCount;
 
   unsigned int duration;
   int pedalMin;
   int pedalMax;
   unsigned int frequency;
-  bool pedalRead;
   unsigned int power;
   int curve;
 };
