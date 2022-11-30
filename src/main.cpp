@@ -2,12 +2,7 @@
 
 #define I2C_PIN_SDA (4u)
 #define I2C_PIN_SCL (5u)
-#define SOLENOID_PIN (18u)
-
-#define UP_PIN (3u)
-#define RIGHT_PIN (0u)
-#define DOWN_PIN (1u)
-#define LEFT_PIN (2u)
+#define SOLENOID_PIN (21u)
 
 #define POT_PIN A0
 #define PEDAL_PIN A2
@@ -15,12 +10,32 @@
 #define MIN_POWER 64
 #define REVERSE_PEDAL true
 
+#define POWER_PIN_1 (2u)
+#define POWER_PIN_2 (1u)
+#define POWER_BUTTON_PIN (3u)
+
+#define MENU_PIN_1 (8u)
+#define MENU_PIN_2 (7u)
+#define MENU_BUTTON_PIN (6u)
+
+#define SPI_CCK_PIN (18u)
+#define SPI_MOSI_PIN (19u)
+#define SPI_MISO_PIN (16u)
+
+#define FRAM_CS_PIN (20u)
+
 // TODO: Move to state and fram
 #define MIN_DURATION 2
 #define MAX_DURATION 40
 
+#define MIN_CURVE -6
+#define MAX_CURVE 6
+
 #define HOLD_BUTTON_DURATION 400
 
+#define SPI_INTERFACES_COUNT 1
+
+#include "Adafruit_FRAM_SPI.h"
 #include "fast_math.h"
 #include "graver_menu.h"
 #include "hold_button.h"
@@ -30,10 +45,12 @@
 #include "solenoid.h"
 #include "state.h"
 #include "step_rotary.h"
+#include "store.h"
 #include <Bounce2.h>
 #include <MenuSystem.h>
 #include <RBD_Timer.h>
 #include <ResponsiveAnalogRead.h>
+#include <SPI.h>
 #include <cmath>
 #include <hardware/i2c.h>
 #include <map>
@@ -44,55 +61,62 @@ Solenoid solenoid = Solenoid(SOLENOID_PIN);
 
 ResponsiveAnalogRead pedalInput;
 
-StepRotary menuKnob(8u, 7u);
+StepRotary menuKnob(MENU_PIN_1, MENU_PIN_2);
 // TODO: Make step size configurable at update time?
 // or maybe just ignore some number of steps
-StepRotary powerKnob(2u, 1u, ONE_STEP);
+StepRotary powerKnob(POWER_PIN_1, POWER_PIN_2, ONE_STEP);
 
 HoldButton powerKnobButton;
 HoldButton menuKnobButton;
 
 stateType state;
 
-/* Issue:
-menu needs to be global, because it will be accessed from display and main
-loop
+Adafruit_FRAM_SPI fram = Adafruit_FRAM_SPI(FRAM_CS_PIN);
+Store store = Store(&fram);
 
+void initializeFram()
+{
+  if (fram.begin(2)) {
+    Serial.println("SRAM found");
+  } else {
+    Serial.println("NO SRAM found");
+  }
+  state.graverCount = max(1, store.readUint(FramKey::GRAVER_COUNT));
+  state.graver = min(store.readUint(FramKey::GRAVER), state.graverCount);
 
-Menu needs initializing with renderer
-  renderer needs global display
-Menu items need global actions
-  actions need state
-    state must be global
+  // initialize from fram
+  state.scene = Scene::STATUS;
+  state.power = 0;
 
-*/
+  state.powerMode = store.readUint(state.graver, FramKey::POWER_MODE) ? PowerMode::DURATION : PowerMode::POWER;
+  state.pedalMode = store.readUint(state.graver, FramKey::PEDAL_MODE) ? PedalMode::POWER : PedalMode::FREQUENCY;
+
+  int8_t curve = store.readUint(state.graver, FramKey::CURVE) + MIN_CURVE;
+  state.curve = constrain(curve, MIN_CURVE, MAX_CURVE);
+
+  uint16_t power = min(store.readUint16(state.graver, FramKey::POWER), 1023);
+  if (state.pedalMode == PedalMode::FREQUENCY) {
+    state.power = power;
+  } else {
+    state.frequency = power;
+  }
+  state.duration = constrain(store.readUint(state.graver, FramKey::DURATION), MIN_DURATION, MAX_DURATION);
+  state.pedalMax = min(1023, store.readUint16(FramKey::PEDAL_MAX));
+  state.pedalMin = min(store.readUint16(FramKey::PEDAL_MIN), state.pedalMax);
+}
 
 void setup()
 {
   Serial.begin(9600);
+
   pinMode(SOLENOID_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
-
-  pinMode(1u, INPUT_PULLUP);
-  pinMode(2u, INPUT_PULLUP);
-
-  pinMode(LED_BUILTIN, OUTPUT);
-
-  state.scene = Scene::STATUS;
-  state.duration = MIN_DURATION;
-  state.pedalRead = false;
-  state.curve = 0;
-  state.power = 0;
-  state.powerMode = PowerMode::POWER;
-  state.pedalMin = 0;
-  state.pedalMax = 1023;
-
   menuKnob.begin();
   powerKnob.begin();
 
-  powerKnobButton.attach(3u, INPUT_PULLUP);
+  powerKnobButton.attach(POWER_BUTTON_PIN, INPUT_PULLUP);
   powerKnobButton.setPressedState(LOW);
-  menuKnobButton.attach(6u, INPUT_PULLUP);
+  menuKnobButton.attach(MENU_BUTTON_PIN, INPUT_PULLUP);
   menuKnobButton.setPressedState(LOW);
 
   _i2c_init(i2c0, 700000); // Use i2c port with baud rate of 1Mhz
@@ -102,6 +126,15 @@ void setup()
   gpio_pull_up(I2C_PIN_SDA);
   gpio_pull_up(I2C_PIN_SCL);
 
+  // Initialize SPI pins
+  gpio_set_dir(FRAM_CS_PIN, GPIO_OUT);
+  gpio_put(FRAM_CS_PIN, 1);
+
+  gpio_set_function(SPI_CCK_PIN, GPIO_FUNC_SPI);
+  gpio_set_function(SPI_MISO_PIN, GPIO_FUNC_SPI);
+  gpio_set_function(SPI_MOSI_PIN, GPIO_FUNC_SPI);
+
+  initializeFram();
   buildMenu();
 
   pedalInput.enableSleep();
@@ -112,7 +145,6 @@ void setup()
   sleep_ms(500);
   multicore_launch_core1(displayLoop);
   sleep_ms(500);
-  // logger.setTimeout(100);
 }
 
 void updatePedal()
@@ -162,12 +194,15 @@ void updatePower()
   if (state.powerMode == PowerMode::POWER) {
     if (state.pedalMode == PedalMode::FREQUENCY) {
       state.power = unsignedConstrain(state.power + 8 * dir);
+      store.writeUint16(state.graver, FramKey::POWER, state.power);
     } else {
       state.frequency = unsignedConstrain(state.frequency + 8 * dir);
+      store.writeUint16(state.graver, FramKey::POWER, state.frequency);
     }
   } else {
     state.duration =
         constrain(state.duration + dir, MIN_DURATION, MAX_DURATION);
+    store.writeUint(state.graver, FramKey::DURATION, state.duration);
   }
 }
 
@@ -177,9 +212,22 @@ void updateButtons()
   powerKnobButton.update();
 }
 
+void setPowerMode(PowerMode mode)
+{
+  state.powerMode = mode;
+
+  if (mode == PowerMode::POWER) {
+    powerKnob.setStep(ONE_STEP);
+  } else {
+    powerKnob.setStep(FULL_STEP);
+  }
+}
+
 void statusLoop()
 {
   updateButtons();
+  PowerMode oldPower = state.powerMode;
+  PedalMode oldPedal = state.pedalMode;
 
   if (menuKnob.process() || menuKnobButton.wasReleased()) {
     state.scene = Scene::MENU;
@@ -191,17 +239,24 @@ void statusLoop()
     } else {
       state.pedalMode = PedalMode::FREQUENCY;
     }
+
+    // set power mode back to power after changing pedal mode
     if (state.powerMode == PowerMode::DURATION) {
-      state.powerMode = PowerMode::POWER;
+      setPowerMode(PowerMode::POWER);
     }
   } else if (powerKnobButton.wasReleased()) {
     if (state.powerMode == PowerMode::DURATION) {
-      state.powerMode = PowerMode::POWER;
-      powerKnob.setStep(ONE_STEP);
+      setPowerMode(PowerMode::POWER);
     } else {
-      state.powerMode = PowerMode::DURATION;
-      powerKnob.setStep(FULL_STEP);
+      setPowerMode(PowerMode::DURATION);
     }
+  }
+
+  if (state.powerMode != oldPower) {
+    store.writeUint(state.graver, FramKey::POWER_MODE, static_cast<uint8_t>(state.powerMode));
+  }
+  if (state.pedalMode != oldPedal) {
+    store.writeUint(state.graver, FramKey::PEDAL_MODE, static_cast<uint8_t>(state.pedalMode));
   }
 }
 
@@ -246,11 +301,12 @@ void curveLoop()
 
   if (menuVal) {
     int dir = menuVal == DIR_CW ? 1 : -1;
-    int nextCurve = loopValue(state.curve, dir, -6, 6);
+    int nextCurve = loopValue(state.curve, dir, MIN_CURVE, MAX_CURVE);
     if (abs(nextCurve) == 1) {
       nextCurve += dir;
     }
     state.curve = nextCurve;
+    store.writeUint(state.graver, FramKey::CURVE, state.curve - MIN_CURVE);
   }
 
   if (menuKnobButton.wasReleased()) {
@@ -273,13 +329,18 @@ void calibrateLoop()
     calibrationActive = true;
     state.pedalMin = val;
     state.pedalMax = val;
+
+    store.writeUint16(FramKey::PEDAL_MIN, val);
+    store.writeUint16(FramKey::PEDAL_MAX, val);
   }
 
   if (val > state.pedalMax) {
     state.pedalMax = val;
+    store.writeUint16(FramKey::PEDAL_MAX, val);
   }
   if (val < state.pedalMin) {
     state.pedalMin = val;
+    store.writeUint16(FramKey::PEDAL_MIN, val);
   }
 
   if (menuKnobButton.wasReleased()) {
@@ -334,16 +395,4 @@ void loop()
       calibrateLoop();
       break;
   }
-
-  // updateDisplay(pedal, pot, state.duration, solenoid.spm);
-  // if (logger.onRestart()) {
-  //   Serial.println(pedal);
-  //   Serial.print("\t");
-  //   Serial.print(pot);
-  //   Serial.print("\t");
-  //   Serial.print(state.duration);
-  //   Serial.print("\t");
-  //   Serial.println(solenoid.spm);
-  //   Serial.println(micros() - t);
-  // }
 }
