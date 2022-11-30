@@ -4,9 +4,11 @@
 #include "menu_renderer.h"
 #include "scene.h"
 #include "state.h"
+#include "store.h"
 #include "string"
 
 extern stateType state;
+extern Store store;
 
 MenuRenderer renderer;
 MenuSystem menu = MenuSystem(renderer);
@@ -47,6 +49,6 @@ void onModeSelected(MenuComponent *component)
   } else {
     state.pedalMode = PedalMode::FREQUENCY;
   }
-
+  store.writeUint(FramKey::PEDAL_MODE, static_cast<uint8_t>(state.pedalMode));
   mi_mode.set_value(PedalModeLabel.at(state.pedalMode));
 }
