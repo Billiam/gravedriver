@@ -13,9 +13,9 @@ extern TextDisplay *textDisplay;
 void MenuRenderer::render(Menu const &menu) const
 {
   textDisplay->text(menu.get_name());
-  drawLine(display, 0, 15, 128, 15);
+  drawLine(display, 0, 11, 128, 11);
 
-  textDisplay->setCursor(8, 17);
+  textDisplay->setCursor(8, 14);
 
   for (int i = 0; i < menu.get_num_components(); ++i) {
     MenuComponent const *cp_m_comp = menu.get_menu_component(i);

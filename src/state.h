@@ -17,6 +17,7 @@ struct stateType {
   int pedalMax;
   unsigned int frequency;
   unsigned int power;
+  unsigned int powerMin;
   int curve;
 };
 #endif

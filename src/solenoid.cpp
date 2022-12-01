@@ -1,21 +1,25 @@
 #include "solenoid.h"
 #include "fast_math.h"
+#include "state.h"
 #include <RBD_Timer.h>
 #include <cstdint>
 
 #include "pinDefinitions.h"
 
+extern stateType state;
+
 #define MIN_FREQUENCY 20
 #define MAX_FREQUENCY 2600
-#define MIN_POWER 60
 
-Solenoid::Solenoid(uint8_t pin) : _pin(pin), _enabled(true) {}
+Solenoid::Solenoid(uint8_t pin) : _pin(pin), _enabled(true)
+{
+}
 
 double Solenoid::spmPercent() { return (1.0 * spm) / MAX_FREQUENCY; }
 
 void Solenoid::update(int frequency, int power, unsigned int duration)
 {
-  int mappedPower = power == 0 ? 0 : map(power, 1, 1023, MIN_POWER, 128);
+  int mappedPower = power == 0 ? 0 : map(power, 1, 1023, state.powerMin, 128);
   // need to handle curve input for power
   // int curveFreq = curveInput(frequency, frequencyCurve);
   int mappedFrequency = map(frequency, 0, 1023, MIN_FREQUENCY, MAX_FREQUENCY);
@@ -46,7 +50,7 @@ void Solenoid::update(int frequency, int power, unsigned int duration)
   } else {
     spm = mappedFrequency;
   }
-  
+
   if (power == 0) {
     pow = 0;
   } else {

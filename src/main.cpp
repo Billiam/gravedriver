@@ -7,7 +7,6 @@
 #define POT_PIN A0
 #define PEDAL_PIN A2
 
-#define MIN_POWER 64
 #define REVERSE_PEDAL true
 
 #define POWER_PIN_1 (2u)
@@ -81,6 +80,7 @@ void initializeFram()
   } else {
     Serial.println("NO SRAM found");
   }
+
   state.graverCount = max(1, store.readUint(FramKey::GRAVER_COUNT));
   state.graver = min(store.readUint(FramKey::GRAVER), state.graverCount);
 
@@ -100,9 +100,11 @@ void initializeFram()
   } else {
     state.frequency = power;
   }
+
   state.duration = constrain(store.readUint(state.graver, FramKey::DURATION), MIN_DURATION, MAX_DURATION);
   state.pedalMax = min(1023, store.readUint16(FramKey::PEDAL_MAX));
   state.pedalMin = min(store.readUint16(FramKey::PEDAL_MIN), state.pedalMax);
+  state.powerMin = min(128, store.readUint(state.graver, FramKey::POWER_MIN));
 }
 
 void setup()
