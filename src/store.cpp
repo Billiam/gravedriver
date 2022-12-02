@@ -15,10 +15,7 @@ uint8_t Store::readOffset(uint32_t position, uint8_t size)
 uint8_t Store::nextOffset(uint32_t position, uint8_t size)
 {
   uint8_t read = _fram->read8(position);
-  Serial.print("Read offset: ");
-  Serial.print(position);
-  Serial.print("\t");
-  Serial.println(read);
+
   if (read > 0) {
     return 1;
   } else {

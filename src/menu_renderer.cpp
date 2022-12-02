@@ -10,14 +10,28 @@
 extern pico_ssd1306::SSD1306 *display;
 extern TextDisplay *textDisplay;
 
+#define UI_WIDTH 128
+#define UI_HEIGHT 64
+
 void MenuRenderer::render(Menu const &menu) const
 {
   textDisplay->text(menu.get_name());
-  drawLine(display, 0, 11, 128, 11);
+  drawLine(display, 0, 10, UI_WIDTH, 10);
 
-  textDisplay->setCursor(8, 14);
+  uint8_t offset = menu.get_offset();
+  uint8_t entries = menu.get_num_components();
+  uint8_t lines = menu.get_visible_lines();
 
-  for (int i = 0; i < menu.get_num_components(); ++i) {
+  uint8_t lastEntry = min(entries, offset + lines);
+
+  textDisplay->setCursor(8, 13);
+
+  if (offset > 0) {
+    drawLine(display, UI_WIDTH / 2 - 4, 10, UI_WIDTH / 2 + 4, 10, pico_ssd1306::WriteMode::SUBTRACT);
+    addAdafruitBitmap(display, (UI_WIDTH - 8) / 2 + 1, 8, 8, 8, up_arrow);
+  }
+
+  for (int i = offset; i < lastEntry; ++i) {
     MenuComponent const *cp_m_comp = menu.get_menu_component(i);
     int sy = textDisplay->getCursorY();
     if (cp_m_comp->is_current()) {
@@ -29,6 +43,10 @@ void MenuRenderer::render(Menu const &menu) const
       fillRect(display, 0, sy - 1, 127, textDisplay->getCursorY() - 2,
                pico_ssd1306::WriteMode::INVERT);
     }
+  }
+
+  if (offset < entries - lines) {
+    addAdafruitBitmap(display, UI_WIDTH / 2 + 1, UI_HEIGHT - 3, 8, 8, down_arrow);
   }
 }
 
@@ -73,6 +91,7 @@ void MenuRenderer::render_text_menu_item(TextMenuItem const &menu_item) const
   textDisplay->text(val);
   textDisplay->setCursor(sx, ny);
 }
+
 void MenuRenderer::render_menu(Menu const &menu) const
 {
   textDisplay->textln(1, menu.get_name());

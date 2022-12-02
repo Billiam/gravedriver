@@ -19,5 +19,7 @@ struct stateType {
   unsigned int power;
   unsigned int powerMin;
   int curve;
+
+  char graverName[8];
 };
 #endif

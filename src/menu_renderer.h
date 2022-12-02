@@ -2,7 +2,7 @@
 #define menu_renderer_h_
 
 #include "text_menu_item.h"
-#include <MenuSystem.h>
+#include "vendor/MenuSystem.h"
 
 class MenuRenderer : public MenuComponentRenderer
 {

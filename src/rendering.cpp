@@ -4,7 +4,7 @@
 #include "solenoid.h"
 #include "state.h"
 #include "text_display.h"
-#include <MenuSystem.h>
+#include "vendor/MenuSystem.h"
 #include <map>
 #include <shapeRenderer/ShapeRenderer.h>
 #include <ssd1306.h>

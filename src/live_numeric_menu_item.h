@@ -1,7 +1,7 @@
 #ifndef LIVE_NUMERIC_MENU_ITEM_H
 #define LIVE_NUMERIC_MENU_ITEM_H
 
-#include <MenuSystem.h>
+#include "vendor/MenuSystem.h"
 
 class LiveNumericMenuItem : public NumericMenuItem
 {

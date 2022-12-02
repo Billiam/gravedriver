@@ -1,7 +1,7 @@
 #ifndef TEXT_MENU_ITEM_H
 #define TEXT_MENU_ITEM_H
 
-#include <MenuSystem.h>
+#include "vendor/MenuSystem.h"
 
 class TextMenuItem : public MenuItem
 {

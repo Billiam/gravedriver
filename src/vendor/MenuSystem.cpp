@@ -60,11 +60,13 @@ void MenuComponent::set_select_function(SelectFnPtr select_fn)
 // Menu
 // *********************************************************
 
-Menu::Menu(const char *name, SelectFnPtr select_fn)
+Menu::Menu(const char *name, uint8_t lines, SelectFnPtr select_fn)
     : MenuComponent(name, select_fn),
       _p_current_component(nullptr),
       _menu_components(nullptr),
       _p_parent(nullptr),
+      _lines(lines),
+      _offset(0),
       _num_components(0),
       _current_component_num(0),
       _previous_component_num(0)
@@ -83,9 +85,15 @@ bool Menu::next(bool loop)
 
     _p_current_component->set_current();
     _menu_components[_previous_component_num]->set_current(false);
+
+    if (_current_component_num >= _offset + _lines - 1) {
+      _offset = min(_num_components - _lines, _current_component_num - (_lines - 2));
+    }
+
     return true;
   } else if (loop) {
     _current_component_num = 0;
+    _offset = 0;
     _p_current_component = _menu_components[_current_component_num];
 
     _p_current_component->set_current();
@@ -109,9 +117,15 @@ bool Menu::prev(bool loop)
     _p_current_component->set_current();
     _menu_components[_previous_component_num]->set_current(false);
 
+    if (_current_component_num < _offset + 1) {
+      _offset = max(0, _current_component_num - 1);
+    }
+
     return true;
   } else if (loop) {
     _current_component_num = _num_components - 1;
+    _offset = _current_component_num - _lines + 1;
+
     _p_current_component = _menu_components[_current_component_num];
 
     _p_current_component->set_current();
@@ -146,6 +160,7 @@ void Menu::reset()
   for (int i = 0; i < _num_components; ++i)
     _menu_components[i]->reset();
 
+  _offset = 0;
   _p_current_component->set_current(false);
   _previous_component_num = 0;
   _current_component_num = 0;
@@ -191,6 +206,16 @@ Menu const *Menu::get_parent() const
 void Menu::set_parent(Menu *p_parent)
 {
   _p_parent = p_parent;
+}
+
+uint8_t Menu::get_offset() const
+{
+  return _offset;
+}
+
+uint8_t Menu::get_visible_lines() const
+{
+  return _lines;
 }
 
 MenuComponent const *Menu::get_menu_component(uint8_t index) const
@@ -396,8 +421,8 @@ bool NumericMenuItem::prev(bool loop)
 // MenuSystem
 // *********************************************************
 
-MenuSystem::MenuSystem(MenuComponentRenderer const &renderer)
-    : _p_root_menu(new Menu("", nullptr)),
+MenuSystem::MenuSystem(MenuComponentRenderer const &renderer, uint8_t lines)
+    : _p_root_menu(new Menu("", lines, nullptr)),
       _p_curr_menu(_p_root_menu),
       _renderer(renderer)
 {

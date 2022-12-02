@@ -307,7 +307,7 @@ class Menu : public MenuComponent
   friend class MenuSystem;
 
 public:
-  Menu(const char *name, SelectFnPtr select_fn = nullptr);
+  Menu(const char *name, uint8_t lines = 1, SelectFnPtr select_fn = nullptr);
 
   //! \brief Adds a MenuItem to the Menu
   void add_item(MenuItem *p_item);
@@ -321,6 +321,8 @@ public:
   uint8_t get_num_components() const;
   uint8_t get_current_component_num() const;
   uint8_t get_previous_component_num() const;
+  uint8_t get_offset() const;
+  uint8_t get_visible_lines() const;
 
   //! \copydoc MenuComponent::render
   void render(MenuComponentRenderer const &renderer) const;
@@ -353,6 +355,8 @@ private:
   MenuComponent *_p_current_component;
   MenuComponent **_menu_components;
   Menu *_p_parent;
+  uint8_t _lines;
+  uint8_t _offset;
   uint8_t _num_components;
   uint8_t _current_component_num;
   uint8_t _previous_component_num;
@@ -361,7 +365,7 @@ private:
 class MenuSystem
 {
 public:
-  MenuSystem(MenuComponentRenderer const &renderer);
+  MenuSystem(MenuComponentRenderer const &renderer, uint8_t lines = 1);
 
   void display() const;
   bool next(bool loop = false);

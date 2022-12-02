@@ -45,8 +45,8 @@
 #include "state.h"
 #include "step_rotary.h"
 #include "store.h"
+#include "vendor/MenuSystem.h"
 #include <Bounce2.h>
-#include <MenuSystem.h>
 #include <RBD_Timer.h>
 #include <ResponsiveAnalogRead.h>
 #include <SPI.h>
@@ -81,8 +81,17 @@ void initializeFram()
     Serial.println("NO SRAM found");
   }
 
-  state.graverCount = max(1, store.readUint(FramKey::GRAVER_COUNT));
-  state.graver = min(store.readUint(FramKey::GRAVER), state.graverCount);
+  state.graverCount = constrain(store.readUint(FramKey::GRAVER_COUNT), 1, 4);
+  state.graver = min(store.readUint(FramKey::GRAVER), state.graverCount - 1);
+
+  char name[] = "";
+  store.readChars(state.graver, FramKey::NAME, name, 8);
+  sleep_ms(3000);
+
+  if (strlen(name) == 0) {
+    snprintf(name, 8, "#%d", state.graver + 1);
+  }
+  strncpy(state.graverName, name, 8);
 
   // initialize from fram
   state.scene = Scene::STATUS;
