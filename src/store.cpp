@@ -14,9 +14,7 @@ uint8_t Store::readOffset(uint32_t position, uint8_t size)
 
 uint8_t Store::nextOffset(uint32_t position, uint8_t size)
 {
-  uint8_t read = _fram->read8(position);
-
-  if (read > 0) {
+  if (_fram->read8(position) > 0) {
     return 1;
   } else {
     return size + 1;

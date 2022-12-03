@@ -114,6 +114,10 @@ void initializeFram()
   state.pedalMax = min(1023, store.readUint16(FramKey::PEDAL_MAX));
   state.pedalMin = min(store.readUint16(FramKey::PEDAL_MIN), state.pedalMax);
   state.powerMin = min(128, store.readUint(state.graver, FramKey::POWER_MIN));
+
+  uint16_t spmMax = store.readUint16(state.graver, FramKey::FREQUENCY_MAX);
+  state.spmMin = constrain(store.readUint16(state.graver, FramKey::FREQUENCY_MIN), 5, 4000);
+  state.spmMax = constrain(spmMax, state.spmMin, 4000);
 }
 
 void setup()

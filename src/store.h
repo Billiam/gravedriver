@@ -18,15 +18,13 @@ enum class FramKey : const unsigned char {
   PEDAL_MAX = 7,
   POWER_MIN = 8,
 
-  DURATION_MIN = 9,
-  DURATION_MAX = 10,
-  FREQUENCY_MIN = 11,
-  FREQUENCY_MAX = 12,
+  FREQUENCY_MIN = 9,
+  FREQUENCY_MAX = 10,
 
-  DURATION = 13,
+  DURATION = 11,
 
-  GRAVER_COUNT = 14,
-  GRAVER = 15
+  GRAVER_COUNT = 12,
+  GRAVER = 13
 };
 
 const std::map<FramKey, uint32_t> FramAddr = {
@@ -43,11 +41,9 @@ const std::map<FramKey, uint32_t> GraverAddr = {
     {FramKey::PEDAL_MODE, 25},    // 8
     {FramKey::CURVE, 28},         // 8
     {FramKey::POWER_MIN, 31},     // 8
-    {FramKey::DURATION_MIN, 34},  // 8
-    {FramKey::DURATION_MAX, 37},  // 8
-    {FramKey::FREQUENCY_MIN, 40}, // 16
-    {FramKey::FREQUENCY_MAX, 45}, // 16
-    {FramKey::DURATION, 50},      // 8
+    {FramKey::FREQUENCY_MIN, 34}, // 16
+    {FramKey::FREQUENCY_MAX, 39}, // 16
+    {FramKey::DURATION, 44},      // 8
 };
 
 class Store

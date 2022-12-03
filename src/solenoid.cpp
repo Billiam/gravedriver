@@ -8,21 +8,18 @@
 
 extern stateType state;
 
-#define MIN_FREQUENCY 20
-#define MAX_FREQUENCY 2600
-
 Solenoid::Solenoid(uint8_t pin) : _pin(pin), _enabled(true)
 {
 }
 
-double Solenoid::spmPercent() { return (1.0 * spm) / MAX_FREQUENCY; }
+double Solenoid::spmPercent() { return (1.0 * spm) / state.spmMax; }
 
 void Solenoid::update(int frequency, int power, unsigned int duration)
 {
   int mappedPower = power == 0 ? 0 : map(power, 1, 1023, state.powerMin, 128);
   // need to handle curve input for power
   // int curveFreq = curveInput(frequency, frequencyCurve);
-  int mappedFrequency = map(frequency, 0, 1023, MIN_FREQUENCY, MAX_FREQUENCY);
+  int mappedFrequency = map(frequency, 0, 1023, state.spmMin, state.spmMax);
 
   // Serial.print(mappedPower);
   // Serial.print("\t");

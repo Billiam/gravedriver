@@ -18,6 +18,10 @@ struct stateType {
   unsigned int frequency;
   unsigned int power;
   unsigned int powerMin;
+
+  unsigned int spmMin;
+  unsigned int spmMax;
+
   int curve;
 
   char graverName[8];
