@@ -5,7 +5,8 @@ enum class Scene : const unsigned char {
   STATUS = 0,
   CURVE = 1,
   MENU = 2,
-  CALIBRATE = 3
+  CALIBRATE = 3,
+  RESET = 4
 };
 
 #endif

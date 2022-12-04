@@ -14,5 +14,6 @@ void drawMeter(pico_ssd1306::SSD1306 *ssd1306, int x, int y, int width,
 void drawCalibrate(pico_ssd1306::SSD1306 *ssd1306);
 void drawMenu(pico_ssd1306::SSD1306 *ssd1306);
 void drawCurve(pico_ssd1306::SSD1306 *ssd1306);
+void drawReset(pico_ssd1306::SSD1306 *ssd1306);
 void displayLoop();
 #endif

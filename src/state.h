@@ -25,5 +25,10 @@ struct stateType {
   int curve;
 
   char graverName[8];
+
+  bool clearConfirmed;
+  float confirmPct;
+  bool confirmSelected;
+  absolute_time_t confirmTime;
 };
 #endif

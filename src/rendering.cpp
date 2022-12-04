@@ -21,6 +21,8 @@ extern MenuSystem menu;
 pico_ssd1306::SSD1306 *display;
 TextDisplay *textDisplay;
 
+absolute_time_t lastLoopStart;
+
 void plotDeadzone(pico_ssd1306::SSD1306 *ssd1306, int frequency, int x, int y,
                   int width, int height)
 {
@@ -169,7 +171,56 @@ void drawCalibrate(pico_ssd1306::SSD1306 *ssd1306)
            pico_ssd1306::WriteMode::INVERT);
 }
 
-absolute_time_t lastLoopStart;
+void drawReset(pico_ssd1306::SSD1306 *ssd1306)
+{
+  static bool inverted = false;
+  if (state.clearConfirmed) {
+
+    uint16_t diff = absolute_time_diff_us(state.confirmTime, lastLoopStart) / 1000;
+    if (diff < 100) {
+      if (!inverted) {
+        inverted = true;
+        ssd1306->invertDisplay();
+      }
+    } else if (diff < 500) {
+      if (inverted) {
+        inverted = false;
+        ssd1306->invertDisplay();
+      }
+
+      uint8_t h = 32 * (diff - 100) / 400;
+      fillRect(ssd1306, 0, h, 127, 64 - h);
+    } else {
+      uint8_t x = 64 * min(1, (diff - 500) / 500.0);
+      drawLine(ssd1306, x, 32, 128 - x, 32);
+    }
+    return;
+  }
+
+  uint8_t magnitude = state.confirmPct < 0.1 ? 0 : 1 + 4 * state.confirmPct;
+  int ssy = random(-magnitude / 2, magnitude * 1.5);
+  int ssx = random(-magnitude, magnitude);
+
+  textDisplay->moveCursor(ssx + 1, ssy);
+  textDisplay->textln("clear all data?");
+  textDisplay->moveCursor(0, 3);
+
+  textDisplay->textln("hold to confirm");
+  if (state.confirmSelected) {
+    fillRect(ssd1306, max(0, textDisplay->getCursorX() - 1), textDisplay->getCursorY() - 11, 91 + ssx, textDisplay->getCursorY() - 2, pico_ssd1306::WriteMode::INVERT);
+  }
+
+  textDisplay->moveCursor(0, 3);
+
+  drawMeter(ssd1306, 6 + ssx, textDisplay->getCursorY(), 120, 20, state.confirmPct);
+
+  textDisplay->setCursor(52 + ssx, 56 + ssy);
+
+  textDisplay->text("back");
+  if (!state.confirmSelected) {
+    fillRect(ssd1306, 51, textDisplay->getCursorY() - 1, 75, textDisplay->getCursorY() + 8, pico_ssd1306::WriteMode::INVERT);
+  }
+}
 
 void drawStatus(pico_ssd1306::SSD1306 *ssd1306)
 {
@@ -270,6 +321,9 @@ void displayLoop()
         break;
       case Scene::CALIBRATE:
         drawCalibrate(display);
+        break;
+      case Scene::RESET:
+        drawReset(display);
         break;
     }
 

@@ -21,6 +21,8 @@
 #define SPI_MOSI_PIN (19u)
 #define SPI_MISO_PIN (16u)
 
+#define OLED_RESET_PIN (15u)
+
 #define FRAM_CS_PIN (20u)
 
 // TODO: Move to state and fram
@@ -53,9 +55,12 @@
 #include <cmath>
 #include <hardware/i2c.h>
 #include <map>
+#include <mbed.h>
 #include <pico/multicore.h>
 
 RBD::Timer logger;
+RBD::Timer resetTimer(1000);
+
 Solenoid solenoid = Solenoid(SOLENOID_PIN);
 
 ResponsiveAnalogRead pedalInput;
@@ -72,6 +77,12 @@ stateType state;
 
 Adafruit_FRAM_SPI fram = Adafruit_FRAM_SPI(FRAM_CS_PIN);
 Store store = Store(&fram);
+
+void initializeState()
+{
+  state.confirmPct = 0;
+  state.confirmSelected = true;
+}
 
 void initializeFram()
 {
@@ -126,6 +137,10 @@ void setup()
 
   pinMode(SOLENOID_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
+
+  pinMode(OLED_RESET_PIN, OUTPUT);
+  digitalWrite(OLED_RESET_PIN, LOW);
+
   menuKnob.begin();
   powerKnob.begin();
 
@@ -149,6 +164,7 @@ void setup()
   gpio_set_function(SPI_MISO_PIN, GPIO_FUNC_SPI);
   gpio_set_function(SPI_MOSI_PIN, GPIO_FUNC_SPI);
 
+  initializeState();
   initializeFram();
   buildMenu();
 
@@ -157,7 +173,9 @@ void setup()
   pedalInput.enableEdgeSnap();
   pedalInput.setActivityThreshold(10.0);
 
+  digitalWrite(OLED_RESET_PIN, HIGH);
   sleep_ms(500);
+
   multicore_launch_core1(displayLoop);
   sleep_ms(500);
 }
@@ -364,6 +382,44 @@ void calibrateLoop()
     state.scene = Scene::MENU;
   }
 }
+void resetLoop()
+{
+  updateButtons();
+
+  // could be handled with new scene
+  if (state.clearConfirmed) {
+    if (resetTimer.onExpired()) {
+      store.clear();
+      mbed::Watchdog::get_instance().start(1);
+      while (1)
+        ;
+    }
+
+    return;
+  }
+
+  if (menuKnob.process()) {
+    state.confirmSelected = !state.confirmSelected;
+  }
+
+  if (state.confirmSelected) {
+    if (menuKnobButton.wasHeld(2000)) {
+      // confirm, do stuff
+      state.confirmTime = get_absolute_time();
+      state.clearConfirmed = true;
+      resetTimer.restart();
+    } else if (menuKnobButton.isPressed()) {
+      state.confirmPct = min(menuKnobButton.currentDuration() / 2000.0, 1.0);
+    } else {
+      state.confirmPct = 0;
+    }
+  } else {
+    state.confirmPct = 0;
+    if (menuKnobButton.wasReleased()) {
+      state.scene = Scene::MENU;
+    }
+  }
+}
 
 int curveInput(int val, int curve)
 {
@@ -408,6 +464,9 @@ void loop()
       break;
     case Scene::CALIBRATE:
       calibrateLoop();
+      break;
+    case Scene::RESET:
+      resetLoop();
       break;
   }
 }

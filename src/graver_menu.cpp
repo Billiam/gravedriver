@@ -26,6 +26,7 @@ void onGraverSelected(MenuComponent *p_menu_component);
 void onMinSpmSelected(MenuComponent *p_menu_component);
 void onMaxSpmSelected(MenuComponent *p_menu_component);
 float spmScaling(const float value);
+void onClearMemory(MenuComponent *p_menu_component);
 
 BackMenuItem mi_exit("back", &onExitSelected, &menu);
 TextMenuItem mi_mode("pedal", &onModeSelected, "");
@@ -35,6 +36,7 @@ LiveNumericMenuItem mi_power_min("min power", &onMinPowerSelected, 0, 0, 128, 1.
 TextMenuItem mi_graver("graver", &onGraverSelected, "");
 ScalingNumericMenuItem mi_freq_min("min spm", &onMinSpmSelected, 5.0, 5.0, 4000, 5.0, &spmScaling);
 ScalingNumericMenuItem mi_freq_max("max spm", &onMaxSpmSelected, 3000, 5.0, 4000, 5.0, &spmScaling);
+MenuItem mi_clear("clear memory", &onClearMemory);
 
 void buildMenu()
 {
@@ -56,6 +58,7 @@ void buildMenu()
   ms->add_item(&mi_power_min);
   ms->add_item(&mi_freq_min);
   ms->add_item(&mi_freq_max);
+  ms->add_item(&mi_clear);
 }
 
 void onCurveSelected(MenuComponent *component) { state.scene = Scene::CURVE; }
@@ -128,4 +131,9 @@ float spmScaling(const float val)
   } else {
     return 100;
   }
+}
+
+void onClearMemory(MenuComponent *component)
+{
+  state.scene = Scene::RESET;
 }

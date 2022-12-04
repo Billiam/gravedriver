@@ -131,11 +131,21 @@ void Store::writeChars(FramKey key, const char *value, uint8_t count)
 void Store::writeChars(uint32_t position, const char *value, uint8_t count)
 {
   const uint8_t offset = nextOffset(position, count);
-  // does this work?
   _fram->writeEnable(true);
   for (uint8_t i = 0; i < count; i++) {
     _fram->write8(position + offset + i, value[i]);
   }
   _fram->writeEnable(false);
   setReadLocation(position, offset);
+}
+
+void Store::clear()
+{
+  uint8_t buff[8];
+  std::fill(std::begin(buff), std::begin(buff) + 8, 0);
+  // _fram->writeEnable(true);
+  for (uint32_t i = 0; i < FRAM_SIZE / 8; i++) {
+    _fram->write(i * 8, (uint8_t *)&buff, 8);
+  }
+  // _fram->writeEnable(false);
 }

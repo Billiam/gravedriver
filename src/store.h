@@ -8,6 +8,8 @@
 #define GRAVER_SIZE 100
 #define GRAVER_START 80
 
+#define FRAM_SIZE 8192
+
 enum class FramKey : const unsigned char {
   NAME = 1,
   POWER = 2,
@@ -74,6 +76,8 @@ public:
   void writeUint16(uint8_t graver, FramKey key, uint16_t value);
   void writeUint16(FramKey key, uint16_t value);
   void writeUint16(uint32_t position, uint16_t value);
+
+  void clear();
 
 protected:
   Adafruit_FRAM_SPI *_fram;
