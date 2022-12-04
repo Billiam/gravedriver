@@ -59,7 +59,7 @@
 #include <pico/multicore.h>
 
 RBD::Timer logger;
-RBD::Timer resetTimer(1000);
+RBD::Timer resetTimer(1100);
 
 Solenoid solenoid = Solenoid(SOLENOID_PIN);
 
@@ -382,42 +382,47 @@ void calibrateLoop()
     state.scene = Scene::MENU;
   }
 }
+
+void shutdownLoop()
+{
+  static bool once = []() {
+    solenoid.disable();
+    resetTimer.restart();
+    store.clear();
+    return true;
+  }();
+
+  if (resetTimer.onExpired()) {
+    mbed::Watchdog::get_instance()
+        .start(1);
+    while (1)
+      ;
+  }
+}
+
 void resetLoop()
 {
   updateButtons();
-
-  // could be handled with new scene
-  if (state.clearConfirmed) {
-    if (resetTimer.onExpired()) {
-      store.clear();
-      mbed::Watchdog::get_instance().start(1);
-      while (1)
-        ;
-    }
-
-    return;
-  }
 
   if (menuKnob.process()) {
     state.confirmSelected = !state.confirmSelected;
   }
 
-  if (state.confirmSelected) {
-    if (menuKnobButton.wasHeld(2000)) {
-      // confirm, do stuff
-      state.confirmTime = get_absolute_time();
-      state.clearConfirmed = true;
-      resetTimer.restart();
-    } else if (menuKnobButton.isPressed()) {
-      state.confirmPct = min(menuKnobButton.currentDuration() / 2000.0, 1.0);
-    } else {
-      state.confirmPct = 0;
-    }
-  } else {
+  if (!state.confirmSelected) {
     state.confirmPct = 0;
     if (menuKnobButton.wasReleased()) {
       state.scene = Scene::MENU;
     }
+    return;
+  }
+
+  if (menuKnobButton.wasHeld(2000)) {
+    state.confirmTime = get_absolute_time();
+    state.scene = Scene::SHUTDOWN;
+  } else if (menuKnobButton.isPressed()) {
+    state.confirmPct = min(menuKnobButton.currentDuration() / 2000.0, 1.0);
+  } else {
+    state.confirmPct = 0;
   }
 }
 
@@ -467,6 +472,9 @@ void loop()
       break;
     case Scene::RESET:
       resetLoop();
+      break;
+    case Scene::SHUTDOWN:
+      shutdownLoop();
       break;
   }
 }

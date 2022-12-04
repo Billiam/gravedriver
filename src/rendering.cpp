@@ -171,31 +171,32 @@ void drawCalibrate(pico_ssd1306::SSD1306 *ssd1306)
            pico_ssd1306::WriteMode::INVERT);
 }
 
-void drawReset(pico_ssd1306::SSD1306 *ssd1306)
+void drawShutdown(pico_ssd1306::SSD1306 *ssd1306)
 {
   static bool inverted = false;
-  if (state.clearConfirmed) {
 
-    uint16_t diff = absolute_time_diff_us(state.confirmTime, lastLoopStart) / 1000;
-    if (diff < 100) {
-      if (!inverted) {
-        inverted = true;
-        ssd1306->invertDisplay();
-      }
-    } else if (diff < 500) {
-      if (inverted) {
-        inverted = false;
-        ssd1306->invertDisplay();
-      }
-
-      uint8_t h = 32 * (diff - 100) / 400;
-      fillRect(ssd1306, 0, h, 127, 64 - h);
-    } else {
-      uint8_t x = 64 * min(1, (diff - 500) / 500.0);
-      drawLine(ssd1306, x, 32, 128 - x, 32);
+  uint16_t diff = absolute_time_diff_us(state.confirmTime, lastLoopStart) / 1000;
+  if (diff < 100) {
+    if (!inverted) {
+      inverted = true;
+      ssd1306->invertDisplay();
     }
-    return;
+  } else if (diff < 500) {
+    if (inverted) {
+      inverted = false;
+      ssd1306->invertDisplay();
+    }
+
+    uint8_t h = 32 * (diff - 100) / 400;
+    fillRect(ssd1306, 0, h, 127, 64 - h);
+  } else {
+    uint8_t x = 64 * min(1, (diff - 500) / 500.0);
+    drawLine(ssd1306, x, 32, 128 - x, 32);
   }
+}
+
+void drawReset(pico_ssd1306::SSD1306 *ssd1306)
+{
 
   uint8_t magnitude = state.confirmPct < 0.1 ? 0 : 1 + 4 * state.confirmPct;
   int ssy = random(-magnitude / 2, magnitude * 1.5);
@@ -324,6 +325,9 @@ void displayLoop()
         break;
       case Scene::RESET:
         drawReset(display);
+        break;
+      case Scene::SHUTDOWN:
+        drawShutdown(display);
         break;
     }
 
