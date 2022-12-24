@@ -16,7 +16,7 @@ double Solenoid::spmPercent() { return (1.0 * spm) / state.spmMax; }
 
 void Solenoid::update(int frequency, int power, unsigned int duration)
 {
-  int mappedPower = power == 0 ? 0 : map(power, 1, 1023, state.powerMin, 128);
+  int mappedPower = power == 0 ? 0 : map(power, 1, 1023, state.powerMin, 255);
   // need to handle curve input for power
   // int curveFreq = curveInput(frequency, frequencyCurve);
   int mappedFrequency = map(frequency, 0, 1023, state.spmMin, state.spmMax);

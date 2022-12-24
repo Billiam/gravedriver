@@ -97,7 +97,6 @@ void initializeFram()
 
   char name[] = "";
   store.readChars(state.graver, FramKey::NAME, name, 8);
-  sleep_ms(3000);
 
   if (strlen(name) == 0) {
     snprintf(name, 8, "#%d", state.graver + 1);
