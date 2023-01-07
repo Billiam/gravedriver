@@ -6,6 +6,8 @@
 #include "MenuSystem.h"
 #include <stdlib.h>
 
+// TODO: Add hidden property so that items can be skipped without being dynamic
+
 // *********************************************************
 // MenuComponent
 // *********************************************************
@@ -71,6 +73,24 @@ Menu::Menu(const char *name, uint8_t lines, SelectFnPtr select_fn)
       _current_component_num(0),
       _previous_component_num(0)
 {
+}
+
+void Menu::set_current_selection(uint8_t num)
+{
+  if (num == _current_component_num) {
+    return;
+  }
+  _previous_component_num = _current_component_num;
+  _current_component_num = num;
+  _p_current_component = _menu_components[_current_component_num];
+  _menu_components[_previous_component_num]->set_current(false);
+  _p_current_component->set_current();
+
+  if (_current_component_num >= _offset + _lines - 1) {
+    _offset = min(_num_components - _lines, _current_component_num - (_lines - 2));
+  } else if (_current_component_num < _offset + 1) {
+    _offset = max(0, _current_component_num - 1);
+  }
 }
 
 bool Menu::next(bool loop)

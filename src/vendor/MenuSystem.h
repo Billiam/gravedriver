@@ -315,6 +315,9 @@ public:
   //! \brief Adds a Menu to the Menu
   void add_menu(Menu *p_menu);
 
+  //! \brief Set the current menu selection position
+  void set_current_selection(uint8_t current);
+
   MenuComponent const *get_current_component() const;
   MenuComponent const *get_menu_component(uint8_t index) const;
 
