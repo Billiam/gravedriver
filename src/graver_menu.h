@@ -6,5 +6,6 @@
 extern MenuSystem menu;
 
 void buildMenu();
+void updateMenuItems();
 
 #endif

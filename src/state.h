@@ -7,17 +7,23 @@
 
 struct stateType {
   Scene scene;
+  Scene lastScene;
+
   PowerMode powerMode;
   PedalMode pedalMode;
+
   uint8_t graver;
   uint8_t graverCount;
+  bool graverChanged;
+
+  char graverNames[12][8];
 
   unsigned int duration;
   int pedalMin;
   int pedalMax;
   unsigned int frequency;
   unsigned int power;
-  unsigned int powerMin;
+  uint8_t powerMin;
 
   unsigned int spmMin;
   unsigned int spmMax;

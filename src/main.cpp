@@ -84,28 +84,9 @@ void initializeState()
   state.confirmSelected = true;
 }
 
-void initializeFram()
+void setGraver(uint8_t newGraver)
 {
-  if (fram.begin(2)) {
-    Serial.println("SRAM found");
-  } else {
-    Serial.println("NO SRAM found");
-  }
-
-  state.graverCount = constrain(store.readUint(FramKey::GRAVER_COUNT), 1, 4);
-  state.graver = min(store.readUint(FramKey::GRAVER), state.graverCount - 1);
-
-  char name[] = "";
-  store.readChars(state.graver, FramKey::NAME, name, 8);
-
-  if (strlen(name) == 0) {
-    snprintf(name, 8, "#%d", state.graver + 1);
-  }
-  strncpy(state.graverName, name, 8);
-
-  // initialize from fram
-  state.scene = Scene::STATUS;
-  state.power = 0;
+  strncpy(state.graverName, state.graverNames[state.graver], 8);
 
   state.powerMode = store.readUint(state.graver, FramKey::POWER_MODE) ? PowerMode::DURATION : PowerMode::POWER;
   state.pedalMode = store.readUint(state.graver, FramKey::PEDAL_MODE) ? PedalMode::POWER : PedalMode::FREQUENCY;
@@ -121,13 +102,41 @@ void initializeFram()
   }
 
   state.duration = constrain(store.readUint(state.graver, FramKey::DURATION), MIN_DURATION, MAX_DURATION);
+
+  uint16_t spmMax = store.readUint16(state.graver, FramKey::FREQUENCY_MAX);
+  state.spmMin = constrain(store.readUint16(state.graver, FramKey::FREQUENCY_MIN), 5, 4000);
+  state.spmMax = spmMax < 5 ? 4000 : constrain(spmMax, state.spmMin, 4000);
+}
+
+void initializeFram()
+{
+  if (fram.begin(2)) {
+    Serial.println("SRAM found");
+  } else {
+    Serial.println("NO SRAM found");
+  }
+
+  state.graverCount = constrain(store.readUint(FramKey::GRAVER_COUNT), 1, 4);
+  state.graver = min(store.readUint(FramKey::GRAVER), state.graverCount - 1);
+
+  // TODO: Share constant
+  char name[] = "";
+  for (uint8_t i = 0; i < 12; i++) {
+    store.readChars(i, FramKey::NAME, name, 8);
+    if (strlen(name) == 0) {
+      snprintf(name, 8, "#%d", i + 1);
+    }
+    strncpy(state.graverNames[i], name, 8);
+  }
+
+  state.scene = Scene::STATUS;
+  state.power = 0;
+
   state.pedalMax = min(1023, store.readUint16(FramKey::PEDAL_MAX));
   state.pedalMin = min(store.readUint16(FramKey::PEDAL_MIN), state.pedalMax);
   state.powerMin = min(128, store.readUint(state.graver, FramKey::POWER_MIN));
 
-  uint16_t spmMax = store.readUint16(state.graver, FramKey::FREQUENCY_MAX);
-  state.spmMin = constrain(store.readUint16(state.graver, FramKey::FREQUENCY_MIN), 5, 4000);
-  state.spmMax = constrain(spmMax, state.spmMin, 4000);
+  setGraver(state.graver);
 }
 
 void setup()
@@ -255,8 +264,18 @@ void setPowerMode(PowerMode mode)
   }
 }
 
+void updateGraver()
+{
+  if (state.graverChanged) {
+    setGraver(state.graver);
+    updateMenuItems();
+    state.graverChanged = false;
+  }
+}
 void statusLoop()
 {
+  updateGraver();
+
   updateButtons();
   PowerMode oldPower = state.powerMode;
   PedalMode oldPedal = state.pedalMode;
@@ -294,6 +313,7 @@ void statusLoop()
 
 void menuLoop()
 {
+  updateGraver();
   updateButtons();
   char menuVal = menuKnob.process();
 

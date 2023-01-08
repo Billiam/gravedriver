@@ -28,8 +28,9 @@ uint32_t Store::graverOffset(uint8_t graver, FramKey key)
 
 void Store::setReadLocation(uint32_t position, uint8_t offset)
 {
+  uint8_t next = offset == 1 ? 0 : 1;
   _fram->writeEnable(true);
-  _fram->write8(position, offset == 1 ? 0 : 1);
+  _fram->write8(position, next);
   _fram->writeEnable(false);
 }
 
@@ -143,9 +144,9 @@ void Store::clear()
 {
   uint8_t buff[8];
   std::fill(std::begin(buff), std::begin(buff) + 8, 0);
-  // _fram->writeEnable(true);
+  _fram->writeEnable(true);
   for (uint32_t i = 0; i < FRAM_SIZE / 8; i++) {
     _fram->write(i * 8, (uint8_t *)&buff, 8);
   }
-  // _fram->writeEnable(false);
+  _fram->writeEnable(false);
 }
