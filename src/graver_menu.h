@@ -4,8 +4,10 @@
 #include "vendor/MenuSystem.h"
 
 extern MenuSystem menu;
+extern MenuSystem graverMenu;
 
 void buildMenu();
 void updateMenuItems();
+void updateGraverLabels();
 
 #endif

@@ -17,6 +17,7 @@
 extern stateType state;
 extern Solenoid solenoid;
 extern MenuSystem menu;
+extern MenuSystem graverMenu;
 
 pico_ssd1306::SSD1306 *display;
 TextDisplay *textDisplay;
@@ -266,6 +267,7 @@ void drawStatus(pico_ssd1306::SSD1306 *ssd1306)
 };
 
 void drawMenu(pico_ssd1306::SSD1306 *ssd1306) { menu.display(); }
+void drawGraverMenu(pico_ssd1306::SSD1306 *ssd1306) { graverMenu.display(); }
 void drawCurve(pico_ssd1306::SSD1306 *ssd1306)
 {
   textDisplay->text("input curve");
@@ -328,6 +330,9 @@ void displayLoop()
         break;
       case Scene::SHUTDOWN:
         drawShutdown(display);
+        break;
+      case Scene::GRAVER_MENU:
+        drawGraverMenu(display);
         break;
     }
 

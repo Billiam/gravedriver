@@ -1,4 +1,5 @@
 #include "graver_menu.h"
+#include "constant.h"
 #include "live_numeric_menu_item.h"
 #include "menu_renderer.h"
 #include "scaling_numeric_menu_item.h"
@@ -9,13 +10,15 @@
 #include "vendor/MenuSystem.h"
 
 #define DISPLAY_LINES 5
-#define MAX_GRAVERS 12
 
 extern stateType state;
 extern Store store;
+extern const int MaxGravers;
 
 MenuRenderer renderer;
+
 MenuSystem menu = MenuSystem(renderer, DISPLAY_LINES);
+MenuSystem graverMenu = MenuSystem(renderer, DISPLAY_LINES);
 
 void nullSelection(MenuComponent *component)
 {
@@ -59,17 +62,19 @@ MenuItem mi_graver10("10", &onGraverSelected);
 MenuItem mi_graver11("11", &onGraverSelected);
 MenuItem mi_graver12("12", &onGraverSelected);
 
-MenuItem *gravers[MAX_GRAVERS] = {
+MenuItem *gravers[MaxGravers] = {
     &mi_graver1, &mi_graver2, &mi_graver3, &mi_graver4, &mi_graver5, &mi_graver6, &mi_graver7, &mi_graver8, &mi_graver9, &mi_graver10, &mi_graver11, &mi_graver12};
 
 void buildMenu()
 {
-  menu.get_root_menu().set_name("OPTIONS");
+  Menu *ms = &menu.get_root_menu();
+  Menu *gms = &graverMenu.get_root_menu();
+
+  ms->set_name("OPTIONS");
+  gms->set_name("PRESETS");
 
   mi_mode.set_value(PedalModeLabel.at(PedalMode::FREQUENCY));
   updateMenuItems();
-
-  Menu *ms = &menu.get_root_menu();
 
   ms->add_item(&mi_exit);
 
@@ -83,8 +88,9 @@ void buildMenu()
   ms->add_item(&mi_freq_max);
   ms->add_item(&mi_clear);
 
-  for (int i = 0; i < MAX_GRAVERS; i++) {
+  for (int i = 0; i < MaxGravers; i++) {
     m_graver.add_item(gravers[i]);
+    gms->add_item(gravers[i]);
   }
 }
 
@@ -125,20 +131,6 @@ void onMinPowerChanged(const float value)
   store.writeUint(state.graver, FramKey::POWER_MIN, state.powerMin);
 }
 
-void onGraverChanged(const float val)
-{
-  int graver;
-  if (val > MAX_GRAVERS) {
-    graver = 0;
-  } else if (val < 0) {
-    graver = MAX_GRAVERS - 1;
-  } else {
-    graver = val;
-  }
-  state.graver = graver;
-  state.graverChanged = true;
-}
-
 void onMinSpmSelected(MenuComponent *component)
 {
   float spmMin = static_cast<ScalingNumericMenuItem *>(component)->get_value();
@@ -177,7 +169,7 @@ void onGraverSelected(MenuComponent *component)
 {
   MenuItem *item = static_cast<MenuItem *>(component);
 
-  for (int i = 0; i < MAX_GRAVERS; i++) {
+  for (int i = 0; i < MaxGravers; i++) {
     if (item == gravers[i]) {
       if (state.graver != i) {
         state.graver = i;
@@ -187,21 +179,23 @@ void onGraverSelected(MenuComponent *component)
       if (state.scene == Scene::MENU) {
         menu.back();
       } else {
-        menu.reset();
-        // state.scene = state.lastScene;
+        state.scene = state.lastScene;
       }
       return;
     }
   }
 }
 
-void onGraverMenuSelected(MenuComponent *component)
+void updateGraverLabels()
 {
-  // UPDATE LABELS
-  for (int i = 0; i < MAX_GRAVERS; i++) {
+  for (int i = 0; i < MaxGravers; i++) {
     // TODO: show previous selection
     gravers[i]->set_name(state.graverNames[i]);
   }
+}
 
+void onGraverMenuSelected(MenuComponent *component)
+{
+  updateGraverLabels();
   m_graver.set_current_selection(state.graver);
 }

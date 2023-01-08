@@ -16,6 +16,7 @@
 #define MENU_PIN_1 (8u)
 #define MENU_PIN_2 (7u)
 #define MENU_BUTTON_PIN (6u)
+#define GRAVER_JACK_PIN (10u)
 
 #define SPI_CCK_PIN (18u)
 #define SPI_MOSI_PIN (19u)
@@ -25,18 +26,12 @@
 
 #define FRAM_CS_PIN (20u)
 
-// TODO: Move to state and fram
-#define MIN_DURATION 2
-#define MAX_DURATION 40
-
-#define MIN_CURVE -6
-#define MAX_CURVE 6
-
 #define HOLD_BUTTON_DURATION 400
 
 #define SPI_INTERFACES_COUNT 1
 
 #include "Adafruit_FRAM_SPI.h"
+#include "constant.h"
 #include "fast_math.h"
 #include "graver_menu.h"
 #include "hold_button.h"
@@ -58,6 +53,12 @@
 #include <mbed.h>
 #include <pico/multicore.h>
 
+extern const int MinDuration;
+extern const int MaxDuration;
+extern const int MinCurve;
+extern const int MaxCurve;
+extern const int MaxGravers;
+
 RBD::Timer logger;
 RBD::Timer resetTimer(1100);
 
@@ -72,6 +73,7 @@ StepRotary powerKnob(POWER_PIN_1, POWER_PIN_2, ONE_STEP);
 
 HoldButton powerKnobButton;
 HoldButton menuKnobButton;
+Bounce2::Button graverJack = Bounce2::Button();
 
 stateType state;
 
@@ -91,8 +93,8 @@ void setGraver(uint8_t newGraver)
   state.powerMode = store.readUint(state.graver, FramKey::POWER_MODE) ? PowerMode::DURATION : PowerMode::POWER;
   state.pedalMode = store.readUint(state.graver, FramKey::PEDAL_MODE) ? PedalMode::POWER : PedalMode::FREQUENCY;
 
-  int8_t curve = store.readUint(state.graver, FramKey::CURVE) + MIN_CURVE;
-  state.curve = constrain(curve, MIN_CURVE, MAX_CURVE);
+  int8_t curve = store.readUint(state.graver, FramKey::CURVE) + MinCurve;
+  state.curve = constrain(curve, MinCurve, MaxCurve);
 
   uint16_t power = min(store.readUint16(state.graver, FramKey::POWER), 1023);
   if (state.pedalMode == PedalMode::FREQUENCY) {
@@ -101,7 +103,7 @@ void setGraver(uint8_t newGraver)
     state.frequency = power;
   }
 
-  state.duration = constrain(store.readUint(state.graver, FramKey::DURATION), MIN_DURATION, MAX_DURATION);
+  state.duration = constrain(store.readUint(state.graver, FramKey::DURATION), MinDuration, MaxDuration);
 
   uint16_t spmMax = store.readUint16(state.graver, FramKey::FREQUENCY_MAX);
   state.spmMin = constrain(store.readUint16(state.graver, FramKey::FREQUENCY_MIN), 5, 4000);
@@ -116,12 +118,11 @@ void initializeFram()
     Serial.println("NO SRAM found");
   }
 
-  state.graverCount = constrain(store.readUint(FramKey::GRAVER_COUNT), 1, 4);
-  state.graver = min(store.readUint(FramKey::GRAVER), state.graverCount - 1);
+  state.graver = min(store.readUint(FramKey::GRAVER), MaxGravers - 1);
 
   // TODO: Share constant
   char name[] = "";
-  for (uint8_t i = 0; i < 12; i++) {
+  for (uint8_t i = 0; i < MaxGravers; i++) {
     store.readChars(i, FramKey::NAME, name, 8);
     if (strlen(name) == 0) {
       snprintf(name, 8, "#%d", i + 1);
@@ -134,7 +135,7 @@ void initializeFram()
 
   state.pedalMax = min(1023, store.readUint16(FramKey::PEDAL_MAX));
   state.pedalMin = min(store.readUint16(FramKey::PEDAL_MIN), state.pedalMax);
-  state.powerMin = min(128, store.readUint(state.graver, FramKey::POWER_MIN));
+  state.powerMin = min(255, store.readUint(state.graver, FramKey::POWER_MIN));
 
   setGraver(state.graver);
 }
@@ -156,6 +157,8 @@ void setup()
   powerKnobButton.setPressedState(LOW);
   menuKnobButton.attach(MENU_BUTTON_PIN, INPUT_PULLUP);
   menuKnobButton.setPressedState(LOW);
+  graverJack.attach(GRAVER_JACK_PIN, INPUT_PULLUP);
+  graverJack.setPressedState(LOW);
 
   _i2c_init(i2c0, 700000); // Use i2c port with baud rate of 1Mhz
   // Set pins for I2C operation
@@ -242,7 +245,7 @@ void updatePower()
     }
   } else {
     state.duration =
-        constrain(state.duration + dir, MIN_DURATION, MAX_DURATION);
+        constrain(state.duration + dir, MinDuration, MaxDuration);
     store.writeUint(state.graver, FramKey::DURATION, state.duration);
   }
 }
@@ -251,6 +254,7 @@ void updateButtons()
 {
   menuKnobButton.update();
   powerKnobButton.update();
+  graverJack.update();
 }
 
 void setPowerMode(PowerMode mode)
@@ -264,7 +268,7 @@ void setPowerMode(PowerMode mode)
   }
 }
 
-void updateGraver()
+void updateChangedGraver()
 {
   if (state.graverChanged) {
     setGraver(state.graver);
@@ -272,11 +276,11 @@ void updateGraver()
     state.graverChanged = false;
   }
 }
+
 void statusLoop()
 {
-  updateGraver();
+  updateChangedGraver();
 
-  updateButtons();
   PowerMode oldPower = state.powerMode;
   PedalMode oldPedal = state.pedalMode;
 
@@ -311,10 +315,27 @@ void statusLoop()
   }
 }
 
+void graverMenuLoop()
+{
+  char menuVal = menuKnob.process();
+  if (graverJack.released()) {
+    state.scene = state.lastScene;
+    return;
+  }
+
+  if (menuVal == DIR_CW) {
+    graverMenu.next(true);
+  } else if (menuVal == DIR_CCW) {
+    graverMenu.prev(true);
+  }
+  if (menuKnobButton.wasReleased()) {
+    graverMenu.select();
+  }
+}
+
 void menuLoop()
 {
-  updateGraver();
-  updateButtons();
+  updateChangedGraver();
   char menuVal = menuKnob.process();
 
   if (menuVal == DIR_CW) {
@@ -348,17 +369,16 @@ void menuLoop()
 
 void curveLoop()
 {
-  updateButtons();
   char menuVal = menuKnob.process();
 
   if (menuVal) {
     int dir = menuVal == DIR_CW ? 1 : -1;
-    int nextCurve = loopValue(state.curve, dir, MIN_CURVE, MAX_CURVE);
+    int nextCurve = loopValue(state.curve, dir, MinCurve, MaxCurve);
     if (abs(nextCurve) == 1) {
       nextCurve += dir;
     }
     state.curve = nextCurve;
-    store.writeUint(state.graver, FramKey::CURVE, state.curve - MIN_CURVE);
+    store.writeUint(state.graver, FramKey::CURVE, state.curve - MinCurve);
   }
 
   if (menuKnobButton.wasReleased()) {
@@ -371,7 +391,6 @@ void calibrateLoop()
   static bool calibrationActive = false;
 
   pedalInput.update(analogRead(PEDAL_PIN));
-  updateButtons();
 
   int val = pedalInput.getValue();
 
@@ -421,8 +440,6 @@ void shutdownLoop()
 
 void resetLoop()
 {
-  updateButtons();
-
   if (menuKnob.process()) {
     state.confirmSelected = !state.confirmSelected;
   }
@@ -471,10 +488,27 @@ void updateSolenoid()
   solenoid.update(frequency, power, state.duration);
 }
 
+void updateJack()
+{
+  if (graverJack.released()) {
+    solenoid.disable();
+  } else if (graverJack.pressed()) {
+    solenoid.enable();
+
+    if (state.scene != Scene::GRAVER_MENU) {
+      updateGraverLabels();
+      state.lastScene = state.scene;
+      state.scene = Scene::GRAVER_MENU;
+    }
+  }
+}
+
 // TODO: Could change a pointer to a different scene instead
 void loop()
 {
+  updateButtons();
   updateSolenoid();
+  updateJack();
 
   switch (state.scene) {
     case Scene::STATUS:
@@ -494,6 +528,9 @@ void loop()
       break;
     case Scene::SHUTDOWN:
       shutdownLoop();
+      break;
+    case Scene::GRAVER_MENU:
+      graverMenuLoop();
       break;
   }
 }

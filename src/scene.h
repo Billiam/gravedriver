@@ -7,7 +7,8 @@ enum class Scene : const unsigned char {
   MENU = 2,
   CALIBRATE = 3,
   RESET = 4,
-  SHUTDOWN = 5
+  SHUTDOWN = 5,
+  GRAVER_MENU = 6
 };
 
 #endif

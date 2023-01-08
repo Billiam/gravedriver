@@ -13,7 +13,6 @@ struct stateType {
   PedalMode pedalMode;
 
   uint8_t graver;
-  uint8_t graverCount;
   bool graverChanged;
 
   char graverNames[12][8];
