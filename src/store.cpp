@@ -78,10 +78,7 @@ void Store::readChars(FramKey key, char *result, uint8_t count)
 void Store::readChars(uint32_t position, char *result, uint8_t count)
 {
   const uint32_t pos = readOffset(position, count) + position;
-
-  for (uint8_t i = 0; i < count; i++) {
-    result[i] = _fram->read8(pos + i);
-  }
+  _fram->read(pos, (uint8_t *)result, count);
 }
 
 void Store::writeUint(uint8_t graver, FramKey key, uint8_t value)
@@ -133,9 +130,7 @@ void Store::writeChars(uint32_t position, const char *value, uint8_t count)
 {
   const uint8_t offset = nextOffset(position, count);
   _fram->writeEnable(true);
-  for (uint8_t i = 0; i < count; i++) {
-    _fram->write8(position + offset + i, value[i]);
-  }
+  _fram->write(position + offset, (uint8_t *)value, count);
   _fram->writeEnable(false);
   setReadLocation(position, offset);
 }
