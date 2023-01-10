@@ -28,6 +28,7 @@ struct stateType {
   unsigned int spmMax;
 
   int curve;
+  int brightness;
 
   float confirmPct;
   bool confirmSelected;

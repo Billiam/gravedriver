@@ -312,6 +312,7 @@ void displayLoop()
 
   displayInst.setOrientation(0);
   displayInst.sendBuffer(); // Send buffer to device and show on screen
+  int brightness = 255;
 
   while (1) {
     absolute_time_t now = get_absolute_time();
@@ -319,6 +320,11 @@ void displayLoop()
 
     textDisplay->setCursor(0, 0);
     displayInst.clear();
+
+    if (state.brightness != brightness) {
+      brightness = state.brightness;
+      display->setContrast(brightness);
+    }
 
     switch (state.scene) {
       case Scene::STATUS:

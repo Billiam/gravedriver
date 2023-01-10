@@ -105,6 +105,7 @@ void setGraver(uint8_t newGraver)
   }
 
   state.duration = constrain(store.readUint(state.graver, FramKey::DURATION), MinDuration, MaxDuration);
+  state.brightness = store.readUint(FramKey::BRIGHTNESS);
 
   uint16_t spmMax = store.readUint16(state.graver, FramKey::FREQUENCY_MAX);
   state.spmMin = constrain(store.readUint16(state.graver, FramKey::FREQUENCY_MIN), 5, 4000);
@@ -441,12 +442,13 @@ void calibrateLoop()
 
 void shutdownLoop()
 {
-  static bool once = []() {
+  static bool once = false;
+  if (!once) {
+    once = true;
     solenoid.disable();
     resetTimer.restart();
     store.clear();
-    return true;
-  }();
+  }
 
   if (resetTimer.onExpired()) {
     mbed::Watchdog::get_instance()

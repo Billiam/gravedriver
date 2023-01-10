@@ -16,6 +16,9 @@ extern stateType state;
 extern Store store;
 extern const int MaxGravers;
 
+const char brightness_high[] = "high";
+const char brightness_low[] = "low";
+
 MenuRenderer renderer;
 
 MenuSystem menu = MenuSystem(renderer, DISPLAY_LINES);
@@ -30,9 +33,9 @@ void onGraverMenuSelected(MenuComponent *p_menu_component);
 void onGraverNameSelected(MenuComponent *p_menu_component);
 void onGraverSelected(MenuComponent *p_menu_component);
 void onModeSelected(MenuComponent *p_menu_component);
-
 void onMinSpmSelected(MenuComponent *p_menu_component);
 void onMaxSpmSelected(MenuComponent *p_menu_component);
+void onBrightnessChanged(MenuComponent *p_menu_component);
 
 void onClearMemory(MenuComponent *p_menu_component);
 void onMinPowerChanged(const float value);
@@ -44,7 +47,7 @@ TextMenuItem mi_mode("pedal", &onModeSelected, "");
 MenuItem mi_curve("input curve", &onCurveSelected);
 MenuItem mi_calibrate("calibrate", &onCalibrateSelected);
 LiveNumericMenuItem mi_power_min("min power", &nullSelection, 0, 0, 255, 1.0F, nullptr, &onMinPowerChanged);
-
+TextMenuItem mi_brightness("brightness", &onBrightnessChanged, "high");
 ScalingNumericMenuItem mi_freq_min("min spm", &onMinSpmSelected, 5.0, 5.0, 4000, 5.0, &spmScaling);
 ScalingNumericMenuItem mi_freq_max("max spm", &onMaxSpmSelected, 3000, 5.0, 4000, 5.0, &spmScaling);
 MenuItem mi_clear("clear memory", &onClearMemory);
@@ -91,6 +94,7 @@ void buildMenu()
   ms->add_item(&mi_power_min);
   ms->add_item(&mi_freq_min);
   ms->add_item(&mi_freq_max);
+  ms->add_item(&mi_brightness);
   ms->add_item(&mi_clear);
 
   for (int i = 0; i < MaxGravers; i++) {
@@ -101,6 +105,7 @@ void buildMenu()
 
 void updateMenuItems()
 {
+  mi_brightness.set_value(state.brightness == 255 ? brightness_high : brightness_low);
   mi_power_min.set_value(state.powerMin);
   mi_freq_min.set_value(state.spmMin);
   mi_freq_max.set_value(state.spmMax);
@@ -135,6 +140,18 @@ void onMinPowerChanged(const float value)
 {
   state.powerMin = value;
   store.writeUint(state.graver, FramKey::POWER_MIN, state.powerMin);
+}
+
+void onBrightnessChanged(MenuComponent *p_menu_component)
+{
+  if (state.brightness == 255) {
+    state.brightness = 0;
+    mi_brightness.set_value(brightness_low);
+  } else {
+    mi_brightness.set_value(brightness_high);
+    state.brightness = 255;
+  }
+  store.writeUint(FramKey::BRIGHTNESS, state.brightness);
 }
 
 void onMinSpmSelected(MenuComponent *component)

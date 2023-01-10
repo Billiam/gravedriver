@@ -24,8 +24,7 @@ enum class FramKey : const unsigned char {
   FREQUENCY_MAX = 10,
 
   DURATION = 11,
-
-  // GRAVER_COUNT = 12,
+  BRIGHTNESS = 12,
   GRAVER = 13
 };
 
@@ -34,6 +33,7 @@ const std::map<FramKey, uint32_t> FramAddr = {
     {FramKey::GRAVER, 3},     // 8
     {FramKey::PEDAL_MIN, 6},  // 16
     {FramKey::PEDAL_MAX, 11}, // 16
+    {FramKey::BRIGHTNESS, 17} // 8
 };
 
 const std::map<FramKey, uint32_t> GraverAddr = {
