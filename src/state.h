@@ -15,7 +15,7 @@ struct stateType {
   uint8_t graver;
   bool graverChanged;
 
-  char graverNames[12][8];
+  char graverNames[12][9];
 
   unsigned int duration;
   int pedalMin;
@@ -28,8 +28,6 @@ struct stateType {
   unsigned int spmMax;
 
   int curve;
-
-  char graverName[8];
 
   float confirmPct;
   bool confirmSelected;

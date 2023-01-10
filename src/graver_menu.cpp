@@ -2,6 +2,7 @@
 #include "constant.h"
 #include "live_numeric_menu_item.h"
 #include "menu_renderer.h"
+#include "rename_menu_item.h"
 #include "scaling_numeric_menu_item.h"
 #include "scene.h"
 #include "state.h"
@@ -20,22 +21,23 @@ MenuRenderer renderer;
 MenuSystem menu = MenuSystem(renderer, DISPLAY_LINES);
 MenuSystem graverMenu = MenuSystem(renderer, DISPLAY_LINES);
 
-void nullSelection(MenuComponent *component)
-{
-}
+void nullSelection(MenuComponent *component) {}
 
-void onCurveSelected(MenuComponent *p_menu_component);
 void onExitSelected(MenuComponent *p_menu_component);
 void onCalibrateSelected(MenuComponent *p_menu_component);
+void onCurveSelected(MenuComponent *p_menu_component);
+void onGraverMenuSelected(MenuComponent *p_menu_component);
+void onGraverNameSelected(MenuComponent *p_menu_component);
+void onGraverSelected(MenuComponent *p_menu_component);
 void onModeSelected(MenuComponent *p_menu_component);
-void onMinPowerChanged(const float value);
+
 void onMinSpmSelected(MenuComponent *p_menu_component);
 void onMaxSpmSelected(MenuComponent *p_menu_component);
-float spmScaling(const float value);
-void onClearMemory(MenuComponent *p_menu_component);
 
-void onGraverMenuSelected(MenuComponent *p_menu_component);
-void onGraverSelected(MenuComponent *p_menu_component);
+void onClearMemory(MenuComponent *p_menu_component);
+void onMinPowerChanged(const float value);
+
+float spmScaling(const float value);
 
 BackMenuItem mi_exit("back", &onExitSelected, &menu);
 TextMenuItem mi_mode("pedal", &onModeSelected, "");
@@ -47,6 +49,7 @@ ScalingNumericMenuItem mi_freq_min("min spm", &onMinSpmSelected, 5.0, 5.0, 4000,
 ScalingNumericMenuItem mi_freq_max("max spm", &onMaxSpmSelected, 3000, 5.0, 4000, 5.0, &spmScaling);
 MenuItem mi_clear("clear memory", &onClearMemory);
 
+RenameMenuItem mi_graver_name("name", &onGraverNameSelected, "        ", 8);
 Menu m_graver("preset", DISPLAY_LINES, &onGraverMenuSelected);
 
 MenuItem mi_graver1("1", &onGraverSelected);
@@ -74,12 +77,14 @@ void buildMenu()
   gms->set_name("PRESETS");
 
   mi_mode.set_value(PedalModeLabel.at(PedalMode::FREQUENCY));
+
   updateMenuItems();
 
   ms->add_item(&mi_exit);
 
   ms->add_menu(&m_graver);
 
+  ms->add_item(&mi_graver_name);
   ms->add_item(&mi_mode);
   ms->add_item(&mi_curve);
   ms->add_item(&mi_calibrate);
@@ -99,6 +104,7 @@ void updateMenuItems()
   mi_power_min.set_value(state.powerMin);
   mi_freq_min.set_value(state.spmMin);
   mi_freq_max.set_value(state.spmMax);
+  mi_graver_name.set_value(state.graverNames[state.graver]);
 }
 
 void onCurveSelected(MenuComponent *component)
@@ -198,4 +204,11 @@ void onGraverMenuSelected(MenuComponent *component)
 {
   updateGraverLabels();
   m_graver.set_current_selection(state.graver);
+}
+
+void onGraverNameSelected(MenuComponent *component)
+{
+  RenameMenuItem *item = static_cast<RenameMenuItem *>(component);
+  snprintf(state.graverNames[state.graver], 9, "%s", item->get_current_value());
+  store.writeChars(state.graver, FramKey::NAME, item->get_current_value(), 8);
 }

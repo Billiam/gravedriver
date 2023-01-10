@@ -262,8 +262,16 @@ void drawStatus(pico_ssd1306::SSD1306 *ssd1306)
   }
   textDisplay->textfln(1, "dur: %d", state.duration);
 
-  textDisplay->textfln(1, "off: %d",
-                       spm > 0 ? 60000 / spm - state.duration : 0);
+  textDisplay->setCursor(8, 54);
+  textDisplay->text(1, state.graverNames[state.graver]);
+  fillRect(ssd1306, 7, textDisplay->getCursorY() - 1,
+           textDisplay->getCursorX(), textDisplay->getCursorY() + 8,
+           pico_ssd1306::WriteMode::INVERT);
+  // draw rounded corners
+  drawLine(ssd1306, 8, textDisplay->getCursorY() - 2, textDisplay->getCursorX() - 1, textDisplay->getCursorY() - 2);
+  drawLine(ssd1306, 8, textDisplay->getCursorY() + 9, textDisplay->getCursorX() - 1, textDisplay->getCursorY() + 9);
+  drawLine(ssd1306, 6, textDisplay->getCursorY(), 6, textDisplay->getCursorY() + 7);
+  drawLine(ssd1306, textDisplay->getCursorX() + 1, textDisplay->getCursorY(), textDisplay->getCursorX() + 1, textDisplay->getCursorY() + 7);
 };
 
 void drawMenu(pico_ssd1306::SSD1306 *ssd1306) { menu.display(); }
@@ -336,9 +344,8 @@ void displayLoop()
         break;
     }
 
-    // display FPS
+    // display run time
     textDisplay->setCursor(105, 56);
-    // textDisplay->textf(1, "%d", 1000000 / dur);
     textDisplay->textf(1, "%d", to_ms_since_boot(get_absolute_time()) / 1000);
 
     display->sendBuffer();

@@ -12,6 +12,9 @@
 #include <WProgram.h>
 #endif
 
+// forward definition
+class RenameMenuItem;
+
 class Menu;
 class MenuComponentRenderer;
 class MenuSystem;
@@ -394,6 +397,7 @@ public:
   virtual void render_menu_item(MenuItem const &menu_item) const = 0;
   virtual void render_back_menu_item(BackMenuItem const &menu_item) const = 0;
   virtual void render_numeric_menu_item(NumericMenuItem const &menu_item) const = 0;
+  virtual void render_rename_menu_item(RenameMenuItem const &menu_item) const = 0;
   virtual void render_menu(Menu const &menu) const = 0;
 };
 

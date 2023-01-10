@@ -88,8 +88,6 @@ void initializeState()
 
 void setGraver(uint8_t newGraver)
 {
-  strncpy(state.graverName, state.graverNames[state.graver], 8);
-
   state.powerMode = store.readUint(state.graver, FramKey::POWER_MODE) ? PowerMode::DURATION : PowerMode::POWER;
   state.pedalMode = store.readUint(state.graver, FramKey::PEDAL_MODE) ? PedalMode::POWER : PedalMode::FREQUENCY;
 
@@ -120,14 +118,13 @@ void initializeFram()
 
   state.graver = min(store.readUint(FramKey::GRAVER), MaxGravers - 1);
 
-  // TODO: Share constant
-  char name[] = "";
+  char name[9] = "        ";
   for (uint8_t i = 0; i < MaxGravers; i++) {
     store.readChars(i, FramKey::NAME, name, 8);
     if (strlen(name) == 0) {
-      snprintf(name, 8, "#%d", i + 1);
+      snprintf(name, 9, "#%-8d", i + 1);
     }
-    strncpy(state.graverNames[i], name, 8);
+    snprintf(state.graverNames[i], 9, "%s", name);
   }
 
   state.scene = Scene::STATUS;
@@ -277,8 +274,24 @@ void updateChangedGraver()
   }
 }
 
+void updateJack()
+{
+  if (graverJack.released()) {
+    solenoid.disable();
+  } else if (graverJack.pressed()) {
+    solenoid.enable();
+
+    if (state.scene != Scene::GRAVER_MENU) {
+      updateGraverLabels();
+      state.lastScene = state.scene;
+      state.scene = Scene::GRAVER_MENU;
+    }
+  }
+}
+
 void statusLoop()
 {
+  updateJack();
   updateChangedGraver();
 
   PowerMode oldPower = state.powerMode;
@@ -369,6 +382,7 @@ void menuLoop()
 
 void curveLoop()
 {
+  updateJack();
   char menuVal = menuKnob.process();
 
   if (menuVal) {
@@ -389,6 +403,7 @@ void curveLoop()
 void calibrateLoop()
 {
   static bool calibrationActive = false;
+  updateJack();
 
   pedalInput.update(analogRead(PEDAL_PIN));
 
@@ -488,27 +503,11 @@ void updateSolenoid()
   solenoid.update(frequency, power, state.duration);
 }
 
-void updateJack()
-{
-  if (graverJack.released()) {
-    solenoid.disable();
-  } else if (graverJack.pressed()) {
-    solenoid.enable();
-
-    if (state.scene != Scene::GRAVER_MENU) {
-      updateGraverLabels();
-      state.lastScene = state.scene;
-      state.scene = Scene::GRAVER_MENU;
-    }
-  }
-}
-
 // TODO: Could change a pointer to a different scene instead
 void loop()
 {
   updateButtons();
   updateSolenoid();
-  updateJack();
 
   switch (state.scene) {
     case Scene::STATUS:
