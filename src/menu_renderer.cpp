@@ -74,7 +74,13 @@ void MenuRenderer::render_back_menu_item(BackMenuItem const &menu_item) const
 
 int digitLength(int value)
 {
-  return int(log10(value) + 1);
+  if (value == 0) {
+    return 1;
+  }
+  if (value > 0) {
+    return int(log10(value) + 1);
+  }
+  return int(log10(abs(value) + 1)) + 1;
 }
 
 void MenuRenderer::render_numeric_menu_item(
@@ -89,8 +95,9 @@ void MenuRenderer::render_numeric_menu_item(
   int val = menu_item.get_value();
   textDisplay->setCursor(UI_WIDTH - digitLength(val) * 6, sy);
   textDisplay->textf(1, "%d", (int)menu_item.get_value());
+
   if (menu_item.has_focus()) {
-    fillRect(display, UI_WIDTH - 30, sy - 1, UI_WIDTH - 1, ny - 1,
+    fillRect(display, UI_WIDTH - 30, sy - 1, UI_WIDTH - 1, ny - 2,
              pico_ssd1306::WriteMode::INVERT);
   }
   textDisplay->setCursor(sx, ny);
