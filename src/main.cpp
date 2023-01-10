@@ -91,7 +91,10 @@ void setGraver(uint8_t newGraver)
   state.powerMode = store.readUint(state.graver, FramKey::POWER_MODE) ? PowerMode::DURATION : PowerMode::POWER;
   state.pedalMode = store.readUint(state.graver, FramKey::PEDAL_MODE) ? PedalMode::POWER : PedalMode::FREQUENCY;
 
-  int8_t curve = store.readUint(state.graver, FramKey::CURVE) + MinCurve;
+  int8_t curve = store.readUint(state.graver, FramKey::CURVE);
+  if (curve > 0) {
+    curve = curve + MinCurve - 1;
+  }
   state.curve = constrain(curve, MinCurve, MaxCurve);
 
   uint16_t power = min(store.readUint16(state.graver, FramKey::POWER), 1023);
@@ -122,7 +125,7 @@ void initializeFram()
   for (uint8_t i = 0; i < MaxGravers; i++) {
     store.readChars(i, FramKey::NAME, name, 8);
     if (strlen(name) == 0) {
-      snprintf(name, 9, "#%-8d", i + 1);
+      snprintf(name, 9, "#%-7d", i + 1);
     }
     snprintf(state.graverNames[i], 9, "%s", name);
   }
@@ -392,7 +395,7 @@ void curveLoop()
       nextCurve += dir;
     }
     state.curve = nextCurve;
-    store.writeUint(state.graver, FramKey::CURVE, state.curve - MinCurve);
+    store.writeUint(state.graver, FramKey::CURVE, state.curve - MinCurve + 1);
   }
 
   if (menuKnobButton.wasReleased()) {
