@@ -21,12 +21,6 @@ void Solenoid::update(int frequency, int power, unsigned int duration)
   // int curveFreq = curveInput(frequency, frequencyCurve);
   int mappedFrequency = map(frequency, 0, 1023, state.spmMin, state.spmMax);
 
-  // Serial.print(mappedPower);
-  // Serial.print("\t");
-  // Serial.print(mappedFrequency);
-  // Serial.print("\t");
-  // Serial.println(curveFreq);
-
   _solenoidTimer.setTimeout(60000 / mappedFrequency);
 
   if (frequency == 0 || mappedPower == 0) {
@@ -38,7 +32,6 @@ void Solenoid::update(int frequency, int power, unsigned int duration)
     _solenoidTimer.restart();
   } else if (_on && _solenoidTimer.getValue() > duration) {
     // off cycle
-    // Serial.println(micros() - _startMicros);
     setSolenoid(LOW, mappedPower);
   }
 
