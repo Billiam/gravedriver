@@ -1,30 +1,28 @@
 #include <Arduino.h>
 
-#define I2C_PIN_SDA (4u)
-#define I2C_PIN_SCL (5u)
-#define SOLENOID_PIN (21u)
+#define I2C_PIN_SDA (6u)
+#define I2C_PIN_SCL (7u)
+#define SOLENOID_PIN (26u)
 
-#define POT_PIN A0
 #define PEDAL_PIN A2
 
 #define REVERSE_PEDAL true
 
-#define POWER_PIN_1 (2u)
-#define POWER_PIN_2 (1u)
-#define POWER_BUTTON_PIN (3u)
+#define POWER_PIN_1 (1u)
+#define POWER_PIN_2 (2u)
+#define POWER_BUTTON_PIN (4u)
 
-#define MENU_PIN_1 (8u)
-#define MENU_PIN_2 (7u)
-#define MENU_BUTTON_PIN (6u)
-#define GRAVER_JACK_PIN (10u)
+#define MENU_PIN_1 (9u)
+#define MENU_PIN_2 (10u)
+#define MENU_BUTTON_PIN (12u)
+#define GRAVER_JACK_PIN (13u)
 
+#define SPI_MISO_PIN (16u)
+#define SPI_CS_PIN (17u)
 #define SPI_CCK_PIN (18u)
 #define SPI_MOSI_PIN (19u)
-#define SPI_MISO_PIN (16u)
 
 #define OLED_RESET_PIN (15u)
-
-#define FRAM_CS_PIN (20u)
 
 #define HOLD_BUTTON_DURATION 400
 
@@ -77,7 +75,7 @@ Bounce2::Button graverJack = Bounce2::Button();
 
 stateType state;
 
-Adafruit_FRAM_SPI fram = Adafruit_FRAM_SPI(FRAM_CS_PIN);
+Adafruit_FRAM_SPI fram = Adafruit_FRAM_SPI(SPI_CS_PIN);
 Store store = Store(&fram);
 
 void initializeState()
@@ -161,16 +159,17 @@ void setup()
   graverJack.attach(GRAVER_JACK_PIN, INPUT_PULLUP);
   graverJack.setPressedState(LOW);
 
-  _i2c_init(i2c0, 700000); // Use i2c port with baud rate of 1Mhz
   // Set pins for I2C operation
   gpio_set_function(I2C_PIN_SDA, GPIO_FUNC_I2C);
   gpio_set_function(I2C_PIN_SCL, GPIO_FUNC_I2C);
   gpio_pull_up(I2C_PIN_SDA);
   gpio_pull_up(I2C_PIN_SCL);
 
+  _i2c_init(i2c1, 700000); // Use i2c port with baud rate of 1Mhz
+
   // Initialize SPI pins
-  gpio_set_dir(FRAM_CS_PIN, GPIO_OUT);
-  gpio_put(FRAM_CS_PIN, 1);
+  gpio_set_dir(SPI_CS_PIN, GPIO_OUT);
+  gpio_put(SPI_CS_PIN, 1);
 
   gpio_set_function(SPI_CCK_PIN, GPIO_FUNC_SPI);
   gpio_set_function(SPI_MISO_PIN, GPIO_FUNC_SPI);

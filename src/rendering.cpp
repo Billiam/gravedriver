@@ -305,12 +305,12 @@ void drawCurve(pico_ssd1306::SSD1306 *ssd1306)
 void displayLoop()
 {
   pico_ssd1306::SSD1306 displayInst =
-      pico_ssd1306::SSD1306(i2c0, 0x3C, pico_ssd1306::Size::W128xH64);
+      pico_ssd1306::SSD1306(i2c1, 0x3C, pico_ssd1306::Size::W128xH64);
   display = &displayInst;
   TextDisplay textDisplayInst = TextDisplay(display);
   textDisplay = &textDisplayInst;
 
-  displayInst.setOrientation(0);
+  displayInst.setOrientation(1);
   displayInst.sendBuffer(); // Send buffer to device and show on screen
   int brightness = 255;
 
@@ -351,8 +351,8 @@ void displayLoop()
     }
 
     // display run time
-    textDisplay->setCursor(105, 56);
-    textDisplay->textf(1, "%d", to_ms_since_boot(get_absolute_time()) / 1000);
+    // textDisplay->setCursor(105, 56);
+    // textDisplay->textf(1, "%d", to_ms_since_boot(get_absolute_time()) / 1000);
 
     display->sendBuffer();
   }
