@@ -2,5 +2,5 @@
 
 Raspberry Pi Pico-based solenoid engraving controller
 
-https://user-images.githubusercontent.com/242008/213615895-4703ed5e-bc82-444c-9a00-f93d9d8c3150.mp4
+https://user-images.githubusercontent.com/242008/213616663-63a1479a-d2dd-4977-a8c8-e5d04c06e086.mp4
 
