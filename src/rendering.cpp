@@ -24,7 +24,7 @@ TextDisplay *textDisplay;
 
 absolute_time_t lastLoopStart;
 
-void plotDeadzone(pico_ssd1306::SSD1306 *ssd1306, int frequency, int x, int y,
+void plotDeadzone(pico_ssd1306::SSD1306 *ssd1306, int frequency, unsigned int deadzoneMin, unsigned int deadzoneMax, int x, int y,
                   int width, int height)
 {
   int y1 = y + 2;
@@ -41,8 +41,8 @@ void plotDeadzone(pico_ssd1306::SSD1306 *ssd1306, int frequency, int x, int y,
   x2 -= 2;
   y2 -= 2;
 
-  int minX = x1 + map(state.pedalMin, 0, 1023, 2, width - 4);
-  int maxX = x1 + map(state.pedalMax, 0, 1023, 2, width - 4);
+  int minX = x1 + map(deadzoneMin, 0, 1023, 2, width - 4);
+  int maxX = x1 + map(deadzoneMax, 0, 1023, 2, width - 4);
 
   // drawLine(ssd1306, x1, y2, minX, y2);
   for (int i = x1; i < minX; i += 2) {
@@ -160,15 +160,30 @@ void drawCalibrate(pico_ssd1306::SSD1306 *ssd1306)
 
   int pedalState =
       state.pedalMode == PedalMode::FREQUENCY ? state.frequency : state.power;
-  plotDeadzone(ssd1306, pedalState, 5, 18, 45, 45);
-  textDisplay->textln("move pedal");
-  textDisplay->textln("to min/max");
+  if (state.calibrateActive) {
+    plotDeadzone(ssd1306, pedalState, state.tempPedalMin, state.tempPedalMax, 5, 18, 45, 45);
+  } else {
+    plotDeadzone(ssd1306, pedalState, state.pedalMin, state.pedalMax, 5, 18, 45, 45);
+  }
 
-  textDisplay->moveCursor(0, 8);
-  textDisplay->text("done");
+  if (state.calibrateActive) {
+    textDisplay->textln("move pedal");
+    textDisplay->textln("to min/max");
+  }
 
-  fillRect(ssd1306, 59, textDisplay->getCursorY() - 1,
-           textDisplay->getCursorX() + 1, textDisplay->getCursorY() + 8,
+  textDisplay->setCursor(textDisplay->getCursorX(), 45);
+
+  const int textHighlightY = textDisplay->getCursorY() + state.calibrateMenuIndex * 9;
+  if (state.calibrateActive) {
+    textDisplay->textln("save");
+    textDisplay->text("cancel");
+  } else {
+    textDisplay->textln("calibrate");
+    textDisplay->text("back");
+  }
+
+  fillRect(ssd1306, 59, textHighlightY - 1,
+           122, textHighlightY + 8,
            pico_ssd1306::WriteMode::INVERT);
 }
 

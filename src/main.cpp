@@ -404,37 +404,57 @@ void curveLoop()
 
 void calibrateLoop()
 {
-  static bool calibrationActive = false;
+  static bool calibrationInit = false;
   updateJack();
 
   pedalInput.update(analogRead(PEDAL_PIN));
 
-  int val = pedalInput.getValue();
+  unsigned int val = pedalInput.getValue();
 
-  // TODO: Add start/cancel calibration buttons/submenu
-  if (!calibrationActive) {
-    solenoid.disable();
-    calibrationActive = true;
-    state.pedalMin = val;
-    state.pedalMax = val;
-
-    store.writeUint16(FramKey::PEDAL_MIN, val);
-    store.writeUint16(FramKey::PEDAL_MAX, val);
+  if (!calibrationInit) {
+    state.calibrateMenuIndex = 0;
+    calibrationInit = true;
   }
 
-  if (val > state.pedalMax) {
-    state.pedalMax = val;
-    store.writeUint16(FramKey::PEDAL_MAX, val);
-  }
-  if (val < state.pedalMin) {
-    state.pedalMin = val;
-    store.writeUint16(FramKey::PEDAL_MIN, val);
+  if (menuKnob.process()) {
+    state.calibrateMenuIndex = state.calibrateMenuIndex == 0 ? 1 : 0;
   }
 
-  if (menuKnobButton.wasReleased()) {
-    calibrationActive = false;
-    solenoid.enable();
-    state.scene = Scene::MENU;
+  if (state.calibrateActive) {
+    if (val > state.tempPedalMax) {
+      state.tempPedalMax = val;
+    }
+    if (val < state.tempPedalMin) {
+      state.tempPedalMin = val;
+    }
+
+    if (menuKnobButton.wasReleased()) {
+      if (state.calibrateMenuIndex == 0) {
+        state.pedalMin = state.tempPedalMin;
+        state.pedalMax = state.tempPedalMax;
+        store.writeUint16(FramKey::PEDAL_MIN, state.pedalMin);
+        store.writeUint16(FramKey::PEDAL_MAX, state.pedalMax);
+      }
+
+      state.calibrateActive = false;
+      state.calibrateMenuIndex = 0;
+    } else if (menuKnobButton.wasHeld(HOLD_BUTTON_DURATION)) {
+      state.calibrateActive = false;
+    }
+  } else {
+    if (menuKnobButton.wasReleased()) {
+      if (state.calibrateMenuIndex == 0) {
+        state.calibrateActive = true;
+        state.tempPedalMin = val;
+        state.tempPedalMax = val;
+      } else {
+        calibrationInit = false;
+        state.scene = Scene::MENU;
+      }
+    } else if (menuKnobButton.wasHeld(HOLD_BUTTON_DURATION)) {
+      calibrationInit = false;
+      state.scene = Scene::MENU;
+    }
   }
 }
 
