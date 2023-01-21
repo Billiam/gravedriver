@@ -84,10 +84,11 @@ void initializeState()
   state.confirmSelected = true;
 }
 
-void setGraver(uint8_t newGraver)
+void updateGraver()
 {
   state.powerMode = store.readUint(state.graver, FramKey::POWER_MODE) ? PowerMode::DURATION : PowerMode::POWER;
   state.pedalMode = store.readUint(state.graver, FramKey::PEDAL_MODE) ? PedalMode::POWER : PedalMode::FREQUENCY;
+  state.powerMin = store.readUint(state.graver, FramKey::POWER_MIN);
 
   int8_t curve = store.readUint(state.graver, FramKey::CURVE);
   if (curve > 0) {
@@ -130,13 +131,11 @@ void initializeFram()
   }
 
   state.scene = Scene::STATUS;
-  state.power = 0;
 
   state.pedalMax = min(1023, store.readUint16(FramKey::PEDAL_MAX));
   state.pedalMin = min(store.readUint16(FramKey::PEDAL_MIN), state.pedalMax);
-  state.powerMin = min(255, store.readUint(state.graver, FramKey::POWER_MIN));
 
-  setGraver(state.graver);
+  updateGraver();
 }
 
 void setup()
@@ -271,7 +270,7 @@ void setPowerMode(PowerMode mode)
 void updateChangedGraver()
 {
   if (state.graverChanged) {
-    setGraver(state.graver);
+    updateGraver();
     updateMenuItems();
     state.graverChanged = false;
   }
